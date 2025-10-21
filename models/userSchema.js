@@ -2,10 +2,10 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
-  prenom: { type: String,  trim: true },
-  nom: { type: String,  trim: true },
-  email: { type: String,  unique: true, lowercase: true, trim: true },
-  password: { type: String, },
+  prenom: { type: String, required: true, trim: true },
+  nom: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true ,match: [/.+@.+\..+/, 'Veuillez entrer une adresse email valide']},
+  password: { type: String, required: true ,match: [/(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}/, 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre']},
   role: { type: String, enum: ["etudiant", "enseignant", "admin"], default: "etudiant" },
   image_User : {type : String , default : 'client.png'},
   dateCreationCompte: { type: Date, default: Date.now },

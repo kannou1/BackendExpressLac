@@ -15,7 +15,7 @@ router.get("/enseignants", userController.getEnseignants);
 router.get("/etudiants", userController.getEtudiants);
 
 // 🔧 UPDATE
-router.put("/update/:id", userController.updateUserById);
+router.put("/update/:id", uploadfile.single("image_User"), userController.updateUserById);
 
 // 🔴 DELETE
 router.delete("/delete/:id", userController.deleteUserById);
