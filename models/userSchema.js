@@ -2,18 +2,27 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const userSchema = new mongoose.Schema({
-    nom : String,
-    prenom : String,
-    email : {type : String , required : true , unique : true , lowercase : true , match : [ /@/ , 'Please fill a valid email address']},
-    password : {type :String , required : true , minlength : 6 , match : [ /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,}$/, 'Password must contain at least one uppercase letter, one lowercase letter, and one digit.']},
-    image_User : {type : String , default : 'client.png'},
-    role : {type : String , enum : ['admin' , 'client'] , default : 'user'},
-    age: Number,
-    Status : Boolean,
+  prenom: { type: String, required: true, trim: true },
+  nom: { type: String, required: true, trim: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ["etudiant", "enseignant", "admin"], default: "etudiant" },
+  dateCreationCompte: { type: Date, default: Date.now },
+  age: Number,
+  Status : Boolean,
 
-    //client
-    NumTel : Number,
+    //Etudiant
+    NumTel : String,
     Adresse : String,
+    datedeNaissance : Date,
+    classe : String,
+    dateInscription : Date,
+    
+    //Enseignant
+    specialite : String,
+    dateEmbauche : Date,
+    NumTelEnseignant : String,
+
 
     //Admin
     adminCode : String,

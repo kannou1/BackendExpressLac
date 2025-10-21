@@ -1,192 +1,73 @@
 const userModel = require("../models/userSchema");
 
-// Get all users , add user , delete user , update user
-
-// Create a new user
+// 🟢 Créer un ADMIN
 module.exports.createAdmin = async (req, res) => {
   try {
-    // logique
     const { nom, prenom, email, password, age, adminCode } = req.body;
-    const role = "admin";
-    const newUser = new userModel({
-      nom,
-      prenom,
-      email,
-      password,
-      age,
-      role,
-      adminCode,
-    });
+    const newUser = new userModel({ nom, prenom, email, password, age, role: "admin", adminCode });
     await newUser.save();
-    res.status(201).json({ newUser, message: "User created successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+    res.status(201).json({ newUser, message: "✅ Admin créé avec succès" });
+  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
 
-module.exports.createClient = async (req, res) => {
+// 🟣 Créer un ENSEIGNANT
+module.exports.createEnseignant = async (req, res) => {
   try {
-    // logique
-    const { nom, prenom, email, password, age, NumTel, Adresse } = req.body;
-    const role = "client";
-    const newUser = new userModel({
-      nom,
-      prenom,
-      email,
-      password,
-      age,
-      role,
-      NumTel,
-      Adresse,
-    });
+    const { nom, prenom, email, password, age, specialite, dateEmbauche, NumTelEnseignant } = req.body;
+    const newUser = new userModel({ nom, prenom, email, password, age, role: "enseignant", specialite, dateEmbauche, NumTelEnseignant });
     await newUser.save();
-    res.status(201).json({ newUser, message: "User created successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+    res.status(201).json({ newUser, message: "✅ Enseignant créé avec succès" });
+  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
 
+// 🟢 Créer un ÉTUDIANT
+module.exports.createEtudiant = async (req, res) => {
+  try {
+    const { nom, prenom, email, password, age, NumTel, Adresse, datedeNaissance, classe, dateInscription } = req.body;
+    const newUser = new userModel({ nom, prenom, email, password, age, role: "etudiant", NumTel, Adresse, datedeNaissance, classe, dateInscription });
+    await newUser.save();
+    res.status(201).json({ newUser, message: "✅ Étudiant créé avec succès" });
+  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
+};
+
+// 🔵 GET ALL USERS
 module.exports.getAllUsers = async (req, res) => {
-  try {
-    const users = await userModel.find();
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+  try { const users = await userModel.find().select("-password"); res.status(200).json(users); }
+  catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
 
-module.exports.getAdmin = async (req, res) => {
-  try {
-    const users = await userModel.find({ role: "admin" }).select("-password");
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+// 🔵 GET USERS BY ROLE
+module.exports.getAdmins = async (req, res) => {
+  try { const admins = await userModel.find({ role: "admin" }).select("-password"); res.status(200).json(admins); }
+  catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
 
-module.exports.getClient = async (req, res) => {
-  try {
-    const users = await userModel
-      .find({ role: "client", age: { $mod: [3, 0] } })
-      .select("email nom age ")
-      .sort({ age: 1 })
-      .limit(3);
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+module.exports.getEnseignants = async (req, res) => {
+  try { const enseignants = await userModel.find({ role: "enseignant" }).select("-password"); res.status(200).json(enseignants); }
+  catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
 
-module.exports.getUser18 = async (req, res) => {
-  try {
-    const users = await userModel
-      .find({ age: 18 })
-      .select("email nom age ")
-      .sort({ age: 1 })
-      .limit(3);
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+module.exports.getEtudiants = async (req, res) => {
+  try { const etudiants = await userModel.find({ role: "etudiant" }).select("-password"); res.status(200).json(etudiants); }
+  catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
 
-module.exports.getUserIntervalAge = async (req, res) => {
+// 🔧 UPDATE
+module.exports.updateUserById = async (req, res) => {
   try {
-    const { minAge, MaxAge } = req.body;
-    const users = await userModel
-      .find({ age: { $gte: minAge, $lte: MaxAge } })
-      .select("email nom age ")
-      .sort({ age: 1 })
-      .limit(3);
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+    const { id } = req.params;
+    const user = await userModel.findByIdAndUpdate(id, req.body, { new: true });
+    if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
+    res.status(200).json({ message: "✅ Utilisateur mis à jour", user });
+  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
 
-module.exports.getMoyAgeClient = async (req, res) => {
-  try {
-    const users = await userModel.aggregate([
-      {
-        $group: {
-          _id: "$role",
-          averageAge: { $avg: "$age" },
-        },
-      },
-    ]);
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-module.exports.getUserNameE = async (req, res) => {
-  try {
-    const users = await userModel.find({
-      nom: { $regex: /^E/, $options: "i" },
-    });
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-module.exports.search = async (req, res) => {
-  try {
-    const { nom } = req.body;
-    const users = await userModel.find({ nom: { $regex: nom, $options: "i" } });
-    res.status(200).json(users);
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
+// 🔴 DELETE
 module.exports.deleteUserById = async (req, res) => {
   try {
     const { id } = req.params;
-    const users = await userModel.findByIdAndDelete(id);
-    res.status(200).json({ message: "User deleted successfully", users });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-module.exports.deleteByCondtion = async (req, res) => {
-  try {
-    const users = await userModel.deleteMany({ age: { $gt: 30 } });
-    res.status(200).json({ message: "User deleted successfully", users });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-module.exports.updateByID = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nom, prenom, age } = req.body;
-    const users = await userModel.findByIdAndUpdate(
-      id,
-      { nom, prenom, age },
-      { new: true }
-    );
-    res.status(200).json({ users });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-module.exports.createClientWithImg = async (req, res) => {
-  try {
-    // logique
-    const userData = { ...req.body };
-    if (req.file) {
-      userData.image_User = req.file.filename;
-    }
-    userData.role = "client";
-    const newUser = new userModel(userData);
-    await newUser.save();
-    res.status(201).json({ newUser, message: "User created successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
+    const deleted = await userModel.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Utilisateur introuvable" });
+    res.status(200).json({ message: "🗑️ Utilisateur supprimé avec succès" });
+  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
 };
