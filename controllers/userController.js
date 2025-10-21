@@ -1,33 +1,53 @@
 const userModel = require("../models/userSchema");
 
+
+
 // 🟢 Créer un ADMIN
 module.exports.createAdmin = async (req, res) => {
   try {
-    const { nom, prenom, email, password, age, adminCode } = req.body;
-    const newUser = new userModel({ nom, prenom, email, password, age, role: "admin", adminCode });
+    const userData = { ...req.body };
+    if (req.file) {
+      userData.image_User = req.file.filename;
+    }
+    userData.role = "admin";
+    const newUser = new userModel(userData);
     await newUser.save();
-    res.status(201).json({ newUser, message: "✅ Admin créé avec succès" });
-  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
+    res.status(201).json({ newUser, message: "Admin créé avec succès" });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur serveur", error });
+  }
 };
 
 // 🟣 Créer un ENSEIGNANT
 module.exports.createEnseignant = async (req, res) => {
   try {
-    const { nom, prenom, email, password, age, specialite, dateEmbauche, NumTelEnseignant } = req.body;
-    const newUser = new userModel({ nom, prenom, email, password, age, role: "enseignant", specialite, dateEmbauche, NumTelEnseignant });
+    const userData = { ...req.body };
+    if (req.file) {
+      userData.image_User = req.file.filename;
+    }
+    userData.role = "enseignant";
+    const newUser = new userModel(userData);
     await newUser.save();
-    res.status(201).json({ newUser, message: "✅ Enseignant créé avec succès" });
-  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
+    res.status(201).json({ newUser, message: "Enseignant créé avec succès" });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur serveur", error });
+  }
 };
 
 // 🟢 Créer un ÉTUDIANT
 module.exports.createEtudiant = async (req, res) => {
   try {
-    const { nom, prenom, email, password, age, NumTel, Adresse, datedeNaissance, classe, dateInscription } = req.body;
-    const newUser = new userModel({ nom, prenom, email, password, age, role: "etudiant", NumTel, Adresse, datedeNaissance, classe, dateInscription });
+    const userData = { ...req.body };
+    if (req.file) {
+      userData.image_User = req.file.filename;
+    }
+    userData.role = "etudiant";
+    const newUser = new userModel(userData);
     await newUser.save();
-    res.status(201).json({ newUser, message: "✅ Étudiant créé avec succès" });
-  } catch (error) { res.status(500).json({ message: "❌ Erreur serveur", error }); }
+    res.status(201).json({ newUser, message: "Étudiant créé avec succès" });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur serveur", error });
+  }
 };
 
 // 🔵 GET ALL USERS

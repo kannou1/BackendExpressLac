@@ -1,11 +1,12 @@
-const express = require("express");
-const router = express.Router();
-const userController = require("../controllers/userController");
+var express = require('express');
+var router = express.Router();
+const userController = require('../controllers/userController');
+const uploadfile = require('../middlewares/uploadfile');
 
-// 🟢 CREATE
-router.post("/create-admin", userController.createAdmin);
-router.post("/create-enseignant", userController.createEnseignant);
-router.post("/create-etudiant", userController.createEtudiant);
+// 🟢 CREATE avec upload d'image
+router.post("/create-admin", uploadfile.single("image_User"), userController.createAdmin);
+router.post("/create-enseignant", uploadfile.single("image_User"), userController.createEnseignant);
+router.post("/create-etudiant", uploadfile.single("image_User"), userController.createEtudiant);
 
 // 🔵 READ
 router.get("/all", userController.getAllUsers);
