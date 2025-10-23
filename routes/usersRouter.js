@@ -2,6 +2,11 @@ var express = require('express');
 var router = express.Router();
 const userController = require('../controllers/userController');
 const uploadfile = require('../middlewares/uploadfile');
+const { forgotPassword, resetPassword } = require('../controllers/authController');
+
+
+
+
 
 //  CREATE avec upload d'image
 router.post("/create-admin", uploadfile.single("image_User"), userController.createAdmin);
@@ -19,5 +24,11 @@ router.put("/update/:id", uploadfile.single("image_User"), userController.update
 
 //  DELETE
 router.delete("/delete/:id", userController.deleteUserById);
+// Forgot password
+router.post('/forgot-password', forgotPassword);
+
+// Reset password
+router.post('/reset-password/', resetPassword);
+
 
 module.exports = router;
