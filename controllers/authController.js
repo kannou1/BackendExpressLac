@@ -32,16 +32,27 @@ exports.forgotPassword = async (req, res) => {
     });
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Code sécurisé pour réinitialiser votre mot de passe',
-      html: `
-        <h2>Bonjour ${user.prenom},</h2>
-        <p>Voici votre code sécurisé pour réinitialiser votre mot de passe :</p>
-        <h3>${resetCode}</h3>
-        <p>Ce code expirera dans 10 minutes.</p>
-      `,
-    };
+  from: process.env.EMAIL_USER,
+  to: user.email,
+  subject: '🔒 Réinitialisation de votre mot de passe',
+  html: `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px; background-color: #f9f9f9;">
+    <h2 style="color: #333; text-align: center;">EduNex</h2>
+    <p>Bonjour <strong>${user.prenom}</strong>,</p>
+    <p>Vous avez demandé à réinitialiser votre mot de passe. Utilisez le code ci-dessous pour procéder :</p>
+
+    <div style="text-align: center; margin: 20px 0;">
+      <span style="font-size: 24px; font-weight: bold; color: #ffffff; background-color: #4F46E5; padding: 10px 20px; border-radius: 8px;">${resetCode}</span>
+    </div>
+
+    <p>Ce code est valide pendant <strong>10 minutes</strong>.</p>
+    <p style="font-size: 12px; color: #888;">Si vous n'avez pas demandé cette réinitialisation, ignorez ce message.</p>
+
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e0e0e0;">
+    <p style="text-align: center; font-size: 12px; color: #888;">© 2025 EduNex. Tous droits réservés.</p>
+  </div>
+  `,
+};
 
     await transporter.sendMail(mailOptions);
 
@@ -103,15 +114,25 @@ exports.resetPassword = async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
-      to: user.email,
-      subject: 'Votre mot de passe a été réinitialisé avec succès',
-      html: `
-        <h2>Bonjour ${user.prenom},</h2>
-        <p>Votre mot de passe a été réinitialisé avec succès !</p>
-        <p>Si vous n'êtes pas à l'origine de ce changement, veuillez contacter l'administrateur immédiatement.</p>
-      `,
-    });
+  from: process.env.EMAIL_USER,
+  to: user.email,
+  subject: '✅ Mot de passe réinitialisé avec succès',
+  html: `
+  <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border-radius: 10px; background-color: #f3f4f6; text-align: center;">
+    <h2 style="color: #4F46E5;">EduNex</h2>
+    <p>Bonjour <strong>${user.prenom}</strong>,</p>
+    <p>Votre mot de passe a été réinitialisé avec succès ! 🎉</p>
+    <p>Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.</p>
+
+    <a href="http://localhost:3000/login" style="display: inline-block; margin: 20px 0; padding: 12px 24px; background-color: #4F46E5; color: #fff; text-decoration: none; border-radius: 6px;">Se connecter</a>
+
+    <p style="font-size: 12px; color: #666;">Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'administrateur.</p>
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #d1d5db;">
+    <p style="font-size: 12px; color: #888;">© 2025 EduNex. Tous droits réservés.</p>
+  </div>
+  `,
+});
+
 
     res.status(200).json({ message: "Mot de passe réinitialisé avec succès et email de confirmation envoyé !" });
 
