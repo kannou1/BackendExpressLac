@@ -12,6 +12,11 @@ const { connectToMongoDB } = require('./db/db');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/usersRouter');
+const classeRoutes = require('./routes/classeRoutes');
+const coursRoutes = require('./routes/coursRoutes');
+const edtRoutes = require('./routes/emploiDuTempsRoutes');
+const examenRoutes = require('./routes/examenRoutes');
+const noteRoutes = require('./routes/noteRoutes');
 
 var app = express();
 
@@ -24,6 +29,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/index', indexRouter);
 app.use('/users', usersRouter);
+app.use('/classes', classeRoutes);
+app.use('/cours', coursRoutes);
+app.use('/emploi', edtRoutes);
+app.use('/examen', examenRoutes);
+app.use('/note', noteRoutes);
+
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {

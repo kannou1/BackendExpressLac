@@ -39,20 +39,18 @@ const userSchema = new mongoose.Schema({
   // Admin
   adminCode: String,
 
-  // 🆕 Reset Password
+  // Reset Password
   resetCode: String,
   resetCodeExpires: Date,
 }, { timestamps: true });
 
 // Hash password before saving
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function(next) {
   try {
-    const User = this;
-    if (!User.isModified('password')) return next();
-
-    const salt = await bcrypt.genSalt();
-    User.password = await bcrypt.hash(User.password, salt);
-    User.Status = false;
+    if (!this.isModified('password')) return next();
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    this.Status = false;
     next();
   } catch (error) {
     next(error);
@@ -60,12 +58,12 @@ userSchema.pre('save', async function (next) {
 });
 
 // Method to compare password
-userSchema.methods.comparePassword = async function (enteredPassword) {
+userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 // Log on creation
-userSchema.post('save', function (doc, next) {
+userSchema.post('save', function(doc, next) {
   console.log('New user created: ', doc.email);
   next();
 });
