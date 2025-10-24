@@ -17,6 +17,13 @@ const coursRoutes = require('./routes/coursRoutes');
 const edtRoutes = require('./routes/emploiDuTempsRoutes');
 const examenRoutes = require('./routes/examenRoutes');
 const noteRoutes = require('./routes/noteRoutes');
+const presenceRoutes = require('./routes/presenceRoutes');
+const demandeRoutes = require('./routes/demandeRoutes');
+const stageRequestRoutes = require('./routes/stageRequestRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
+
+
 
 var app = express();
 
@@ -34,6 +41,11 @@ app.use('/cours', coursRoutes);
 app.use('/emploi', edtRoutes);
 app.use('/examen', examenRoutes);
 app.use('/note', noteRoutes);
+app.use('/presence', presenceRoutes);
+app.use('/demande', demandeRoutes);
+app.use('/stageRequest', stageRequestRoutes);
+app.use('/message', messageRoutes);
+app.use('/notification', notificationRoutes);
 
 
 
