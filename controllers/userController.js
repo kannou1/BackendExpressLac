@@ -84,6 +84,26 @@ module.exports.getEtudiants = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error });
   }
 };
+//get userbyid
+module.exports.getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 🔍 Chercher l'utilisateur
+    const user = await userModel.findById(id).select('-password'); 
+
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur introuvable" });
+    }
+
+    // ✅ Retourner l'utilisateur trouvé
+    res.status(200).json(user);
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Erreur lors de la récupération de l'utilisateur", error });
+  }
+};
 
 // ------------------- UPDATE USER -------------------
 module.exports.updateUserById = async (req, res) => {
@@ -110,57 +130,72 @@ module.exports.updateUserById = async (req, res) => {
   }
 };
 
+
 // ------------------- UPDATE PASSWORD -------------------
 module.exports.updatePassword = async (req, res) => {
   try {
     const { id } = req.params;
     const { oldPassword, newPassword } = req.body;
 
+    // 🔍 Trouver l'utilisateur
     const user = await userModel.findById(id);
-    if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
-
-    // Vérifier ancien mot de passe
-    const isMatch = await user.comparePassword(oldPassword);
-    if (!isMatch) return res.status(400).json({ message: "Ancien mot de passe incorrect" });
-
-    // Vérifier sécurité du nouveau mot de passe
-    const passwordRegex = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}/;
-    if (!passwordRegex.test(newPassword)) {
-      return res.status(400).json({ message: "Le nouveau mot de passe ne respecte pas les règles de sécurité." });
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur introuvable." });
     }
 
-    // Hasher le nouveau mot de passe
-    user.password = await bcrypt.hash(newPassword, 10);
+    // 🔑 Vérifier l'ancien mot de passe
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Ancien mot de passe incorrect." });
+    }
+
+    // 🔒 Vérifier la force du nouveau mot de passe
+    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({
+        message:
+          "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre.",
+      });
+    }
+
+    // 🔁 Mettre à jour le mot de passe (hash automatique via pre('save'))
+    user.password = newPassword;
     await user.save();
 
-    // Envoyer email de confirmation
-    try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: user.email,
-        subject: 'Votre mot de passe a été changé',
-        html: `
-          <h2>Bonjour ${user.prenom},</h2>
-          <p>Votre mot de passe a été mis à jour avec succès !</p>
-          <p>Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'administrateur.</p>
-        `,
-      });
-    } catch (emailError) {
-      console.error("Erreur envoi email:", emailError);
-    }
+    // 📧 Envoi d’un email de confirmation
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
 
-    res.status(200).json({ message: "Mot de passe mis à jour et email de confirmation envoyé !" });
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: '🔐 Votre mot de passe a été changé',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin:auto; padding:20px; border-radius:10px; background-color:#f9f9f9;">
+          <h2 style="color:#4F46E5;">EduNex</h2>
+          <p>Bonjour <strong>${user.prenom}</strong>,</p>
+          <p>Votre mot de passe a été mis à jour avec succès ✅</p>
+          <p>Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'administrateur.</p>
+          <p style="font-size:12px; color:#888;">© 2025 EduNex. Tous droits réservés.</p>
+        </div>
+      `,
+    });
+
+    res.status(200).json({
+      message: "Mot de passe mis à jour et email de confirmation envoyé !",
+    });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur lors de la mise à jour du mot de passe", error });
+    console.error("Erreur updatePassword:", error);
+    res.status(500).json({
+      message: "Erreur lors de la mise à jour du mot de passe.",
+      error: error.message,
+    });
   }
 };
 

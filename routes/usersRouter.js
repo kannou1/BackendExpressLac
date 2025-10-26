@@ -14,10 +14,11 @@ router.post("/create-enseignant", uploadfile.single("image_User"), userControlle
 router.post("/create-etudiant", uploadfile.single("image_User"), userController.createEtudiant);
 
 //  READ
-router.get("/all", userController.getAllUsers);
+router.get("/getAllUsers", userController.getAllUsers);
 router.get("/admins", userController.getAdmins);
 router.get("/enseignants", userController.getEnseignants);
 router.get("/etudiants", userController.getEtudiants);
+router.get("/getUserById/:id", userController.getUserById);
 
 //  UPDATE
 router.put("/update/:id", userController.updateUserById);
