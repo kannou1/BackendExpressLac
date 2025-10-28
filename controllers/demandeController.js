@@ -1,7 +1,7 @@
 const Demande = require("../models/demandeSchema");
 
 // Create
-exports.createDemande = async (req, res) => {
+module.exports.createDemande = async (req, res) => {
   try {
     const newDemande = await Demande.create(req.body);
     res.status(201).json(newDemande);
@@ -11,9 +11,9 @@ exports.createDemande = async (req, res) => {
 };
 
 // Get all
-exports.getAllDemandes = async (req, res) => {
+module.exports.getAllDemandes = async (req, res) => {
   try {
-    const demandes = await Demande.find();
+    const demandes = await Demande.find().populate("etudiant");
     res.status(200).json(demandes);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -21,9 +21,9 @@ exports.getAllDemandes = async (req, res) => {
 };
 
 // Get by ID
-exports.getDemandeById = async (req, res) => {
+module.exports.getDemandeById = async (req, res) => {
   try {
-    const demande = await Demande.findById(req.params.id);
+    const demande = await Demande.findById(req.params.id).populate("etudiant");
     if (!demande) return res.status(404).json({ message: "Demande not found" });
     res.status(200).json(demande);
   } catch (error) {
@@ -31,8 +31,9 @@ exports.getDemandeById = async (req, res) => {
   }
 };
 
+
 // Update
-exports.updateDemande = async (req, res) => {
+module.exports.updateDemande = async (req, res) => {
   try {
     const updatedDemande = await Demande.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedDemande) return res.status(404).json({ message: "Demande not found" });
@@ -43,7 +44,7 @@ exports.updateDemande = async (req, res) => {
 };
 
 // Delete
-exports.deleteDemande = async (req, res) => {
+module.exports.deleteDemande = async (req, res) => {
   try {
     const deletedDemande = await Demande.findByIdAndDelete(req.params.id);
     if (!deletedDemande) return res.status(404).json({ message: "Demande not found" });
@@ -54,7 +55,7 @@ exports.deleteDemande = async (req, res) => {
 };
 
 // Delete all
-exports.deleteAllDemandes = async (req, res) => {
+module.exports.deleteAllDemandes = async (req, res) => {
   try {
     const result = await Demande.deleteMany({});
     res.status(200).json({

@@ -1,7 +1,7 @@
 const Presence = require("../models/presenceSchema");
 
 // Create
-exports.createPresence = async (req, res) => {
+module.exports.createPresence = async (req, res) => {
   try {
     const newPresence = await Presence.create(req.body);
     res.status(201).json(newPresence);
@@ -11,9 +11,11 @@ exports.createPresence = async (req, res) => {
 };
 
 // Get all
-exports.getAllPresence = async (req, res) => {
+module.exports.getAllPresence = async (req, res) => {
   try {
-    const presences = await Presence.find();
+    const presences = await Presence.find()
+      .populate("cours")
+      .populate("etudiant");
     res.status(200).json(presences);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -21,9 +23,11 @@ exports.getAllPresence = async (req, res) => {
 };
 
 // Get by ID
-exports.getPresenceById = async (req, res) => {
+module.exports.getPresenceById = async (req, res) => {
   try {
-    const presence = await Presence.findById(req.params.id);
+    const presence = await Presence.findById(req.params.id)
+      .populate("cours")
+      .populate("etudiant");
     if (!presence) return res.status(404).json({ message: "Presence not found" });
     res.status(200).json(presence);
   } catch (error) {
@@ -31,8 +35,9 @@ exports.getPresenceById = async (req, res) => {
   }
 };
 
+
 // Update
-exports.updatePresence = async (req, res) => {
+module.exports.updatePresence = async (req, res) => {
   try {
     const updatedPresence = await Presence.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedPresence) return res.status(404).json({ message: "Presence not found" });
@@ -43,7 +48,7 @@ exports.updatePresence = async (req, res) => {
 };
 
 // Delete
-exports.deletePresence = async (req, res) => {
+module.exports.deletePresence = async (req, res) => {
   try {
     const deletedPresence = await Presence.findByIdAndDelete(req.params.id);
     if (!deletedPresence) return res.status(404).json({ message: "Presence not found" });
@@ -54,7 +59,7 @@ exports.deletePresence = async (req, res) => {
 };
 
 // Delete all
-exports.deleteAllPresence = async (req, res) => {
+module.exports.deleteAllPresence = async (req, res) => {
   try {
     const result = await Presence.deleteMany({});
     res.status(200).json({

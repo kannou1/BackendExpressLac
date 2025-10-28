@@ -1,7 +1,7 @@
 const Note = require("../models/noteSchema");
 
 // Create
-exports.createNote = async (req, res) => {
+module.exports.createNote = async (req, res) => {
   try {
     const newNote = await Note.create(req.body);
     res.status(201).json(newNote);
@@ -11,9 +11,12 @@ exports.createNote = async (req, res) => {
 };
 
 // Get all
-exports.getAllNotes = async (req, res) => {
+module.exports.getAllNotes = async (req, res) => {
   try {
-    const notes = await Note.find();
+    const notes = await Note.find()
+      .populate("examen")
+      .populate("cours")
+      .populate("etudiant");
     res.status(200).json(notes);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -21,9 +24,12 @@ exports.getAllNotes = async (req, res) => {
 };
 
 // Get by ID
-exports.getNoteById = async (req, res) => {
+module.exports.getNoteById = async (req, res) => {
   try {
-    const note = await Note.findById(req.params.id);
+    const note = await Note.findById(req.params.id)
+      .populate("examen")
+      .populate("cours")
+      .populate("etudiant");
     if (!note) return res.status(404).json({ message: "Note not found" });
     res.status(200).json(note);
   } catch (error) {
@@ -31,8 +37,9 @@ exports.getNoteById = async (req, res) => {
   }
 };
 
+
 // Update
-exports.updateNote = async (req, res) => {
+module.exports.updateNote = async (req, res) => {
   try {
     const updatedNote = await Note.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedNote) return res.status(404).json({ message: "Note not found" });
@@ -43,7 +50,7 @@ exports.updateNote = async (req, res) => {
 };
 
 // Delete
-exports.deleteNote = async (req, res) => {
+module.exports.deleteNote = async (req, res) => {
   try {
     const deletedNote = await Note.findByIdAndDelete(req.params.id);
     if (!deletedNote) return res.status(404).json({ message: "Note not found" });
@@ -54,7 +61,7 @@ exports.deleteNote = async (req, res) => {
 };
 
 // Delete all
-exports.deleteAllNotes = async (req, res) => {
+module.exports.deleteAllNotes = async (req, res) => {
   try {
     const result = await Note.deleteMany({});
     res.status(200).json({

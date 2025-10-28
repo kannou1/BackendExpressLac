@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
 
 const presenceSchema = new mongoose.Schema({
-  nom: { type: String, required: true },
-  cours:String,        // e.g., "Présence Math S1"
-  date: { type: Date, required: true },         // date of the presence
-  statut: { type: String, required: true, enum: ["présent", "absent"] } // status
+  date: { type: Date, required: true },
+  statut: { type: String, required: true, enum: ["présent", "absent"] },
+
+  // Relations
+  cours: { type: mongoose.Schema.Types.ObjectId, ref: "Cours" }, // suivi dans
+  etudiant: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // assiste
 }, { timestamps: true });
 
 const Presence = mongoose.model("Presence", presenceSchema);

@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const demandeSchema = new mongoose.Schema({
-  nom: { type: String, required: true },           // e.g., "Attestation de présence"
+  nom: { type: String, required: true },
   type: { 
     type: String, 
     required: true, 
@@ -13,7 +13,9 @@ const demandeSchema = new mongoose.Schema({
     enum: ["en_attente", "approuvee", "rejete"],
     default: "en_attente"
   },
-  dateCreation: { type: Date, default: Date.now }
+  
+  // Relations
+  etudiant: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // effectue
 }, { timestamps: true });
 
 const Demande = mongoose.model("Demande", demandeSchema);

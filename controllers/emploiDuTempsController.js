@@ -1,7 +1,7 @@
 const EmploiDuTemps = require("../models/emploiDuTempsSchema");
 
 // Create
-exports.createEmploiDuTemps = async (req, res) => {
+module.exports.createEmploiDuTemps = async (req, res) => {
   try {
     const newEDT = await EmploiDuTemps.create(req.body);
     res.status(201).json(newEDT);
@@ -10,10 +10,11 @@ exports.createEmploiDuTemps = async (req, res) => {
   }
 };
 
+
 // Get all
-exports.getAllEmploiDuTemps = async (req, res) => {
+module.exports.getAllEmploiDuTemps = async (req, res) => {
   try {
-    const edt = await EmploiDuTemps.find();
+    const edt = await EmploiDuTemps.find().populate("cours");
     res.status(200).json(edt);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -21,9 +22,9 @@ exports.getAllEmploiDuTemps = async (req, res) => {
 };
 
 // Get by ID
-exports.getEmploiDuTempsById = async (req, res) => {
+module.exports.getEmploiDuTempsById = async (req, res) => {
   try {
-    const edt = await EmploiDuTemps.findById(req.params.id);
+    const edt = await EmploiDuTemps.findById(req.params.id).populate("cours");
     if (!edt) return res.status(404).json({ message: "EmploiDuTemps not found" });
     res.status(200).json(edt);
   } catch (error) {
@@ -31,8 +32,9 @@ exports.getEmploiDuTempsById = async (req, res) => {
   }
 };
 
+
 // Update
-exports.updateEmploiDuTemps = async (req, res) => {
+module.exports.updateEmploiDuTemps = async (req, res) => {
   try {
     const updatedEDT = await EmploiDuTemps.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedEDT) return res.status(404).json({ message: "EmploiDuTemps not found" });
@@ -43,7 +45,7 @@ exports.updateEmploiDuTemps = async (req, res) => {
 };
 
 // Delete
-exports.deleteEmploiDuTemps = async (req, res) => {
+module.exports.deleteEmploiDuTemps = async (req, res) => {
   try {
     const deletedEDT = await EmploiDuTemps.findByIdAndDelete(req.params.id);
     if (!deletedEDT) return res.status(404).json({ message: "EmploiDuTemps not found" });
@@ -54,7 +56,7 @@ exports.deleteEmploiDuTemps = async (req, res) => {
 };
 
 // Delete all
-exports.deleteAllEmploiDuTemps = async (req, res) => {
+module.exports.deleteAllEmploiDuTemps = async (req, res) => {
   try {
     const result = await EmploiDuTemps.deleteMany({});
     res.status(200).json({

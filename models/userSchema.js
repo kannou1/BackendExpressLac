@@ -15,20 +15,17 @@ const userSchema = new mongoose.Schema({
   password: { 
     type: String, 
     required: true,
-    match: [/(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}/, 'Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre']
+    match: [/(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}/, 'Mot de passe faible']
   },
   role: { type: String, enum: ["etudiant", "enseignant", "admin"], default: "etudiant" },
   image_User: { type: String, default: 'client.png' },
-  dateCreationCompte: { type: Date, default: Date.now },
-  age: Number,
-  Status: Boolean,
   verified: { type: Boolean, default: false },
-
-  // Etudiant
+  Status: { type: Boolean, default: false },
+   // Etudiant
   NumTel: String,
   Adresse: String,
   datedeNaissance: Date,
-  classe: String,
+  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" }, // Relation: appartient à une classe
   dateInscription: Date,
 
   // Enseignant
@@ -38,8 +35,19 @@ const userSchema = new mongoose.Schema({
 
   // Admin
   adminCode: String,
-
-  // Reset Password
+  // Relations
+  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" },
+  classes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Classe" }], // appartient à une classe
+  coursEnseignes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cours" }], // enseignant
+  notes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Note" }], // reçoit
+  presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }], // assiste
+  demandes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Demande" }], // effectue
+  messages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }], // envoie/reçoit
+  emplois: [{ type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" }],
+  notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }], // reçoit
+  stagesEffectues: [{ type: mongoose.Schema.Types.ObjectId, ref: "StageRequest" }], // effectue
+  
+   // Reset Password
   resetCode: String,
   resetCodeExpires: Date,
 }, { timestamps: true });

@@ -1,7 +1,7 @@
 const Examen = require("../models/examenSchema");
 
 // Create
-exports.createExamen = async (req, res) => {
+module.exports.createExamen = async (req, res) => {
   try {
     const newExamen = await Examen.create(req.body);
     res.status(201).json(newExamen);
@@ -11,9 +11,11 @@ exports.createExamen = async (req, res) => {
 };
 
 // Get all
-exports.getAllExamen = async (req, res) => {
+module.exports.getAllExamen = async (req, res) => {
   try {
-    const examens = await Examen.find();
+    const examens = await Examen.find()
+      .populate("cours")
+      .populate("notes");
     res.status(200).json(examens);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -21,9 +23,12 @@ exports.getAllExamen = async (req, res) => {
 };
 
 // Get by ID
-exports.getExamenById = async (req, res) => {
+
+module.exports.getExamenById = async (req, res) => {
   try {
-    const examen = await Examen.findById(req.params.id);
+    const examen = await Examen.findById(req.params.id)
+      .populate("cours")
+      .populate("notes");
     if (!examen) return res.status(404).json({ message: "Examen not found" });
     res.status(200).json(examen);
   } catch (error) {
@@ -31,8 +36,9 @@ exports.getExamenById = async (req, res) => {
   }
 };
 
+
 // Update
-exports.updateExamen = async (req, res) => {
+module.exports.updateExamen = async (req, res) => {
   try {
     const updatedExamen = await Examen.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedExamen) return res.status(404).json({ message: "Examen not found" });
@@ -43,7 +49,7 @@ exports.updateExamen = async (req, res) => {
 };
 
 // Delete
-exports.deleteExamen = async (req, res) => {
+module.exports.deleteExamen = async (req, res) => {
   try {
     const deletedExamen = await Examen.findByIdAndDelete(req.params.id);
     if (!deletedExamen) return res.status(404).json({ message: "Examen not found" });
@@ -54,7 +60,7 @@ exports.deleteExamen = async (req, res) => {
 };
 
 // Delete all
-exports.deleteAllExamen = async (req, res) => {
+module.exports.deleteAllExamen = async (req, res) => {
   try {
     const result = await Examen.deleteMany({});
     res.status(200).json({

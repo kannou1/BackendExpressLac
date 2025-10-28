@@ -6,6 +6,13 @@ const coursSchema = new mongoose.Schema({
   description: { type: String },
   credits: { type: Number, required: true },
   semestre: { type: String, required: true },
+
+  // Relations
+  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" }, // proposé par une classe
+  enseignant: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // enseigné par
+  examens: [{ type: mongoose.Schema.Types.ObjectId, ref: "Examen" }], // contient
+  presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }], // suivi par
+  emplois: [{ type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" }], // planifié dans
 }, { timestamps: true });
 
 const Cours = mongoose.model("Cours", coursSchema);

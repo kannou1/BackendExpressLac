@@ -1,13 +1,13 @@
 const mongoose = require("mongoose");
 
 const emploiDuTempsSchema = new mongoose.Schema({
-  cours:String,
-  classe: String,
-  enseignant: String,
-  jourSemaine: { type: String, required: true },  // e.g., "Lundi"
-  heureDebut: { type: String, required: true },   // e.g., "08:00"
-  heureFin: { type: String, required: true },     // e.g., "10:00"
-  salle: { type: String, required: true }
+  jourSemaine: { type: String, required: true },
+  heureDebut: { type: String, required: true },
+  heureFin: { type: String, required: true },
+  salle: { type: String, required: true },
+
+  // Relations
+  cours: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cours" }], // planifié dans
 }, { timestamps: true });
 
 const EmploiDuTemps = mongoose.model("EmploiDuTemps", emploiDuTempsSchema);

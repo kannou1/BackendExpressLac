@@ -1,19 +1,22 @@
 const mongoose = require("mongoose");
 
 const stageRequestSchema = new mongoose.Schema({
-  nom: { type: String, required: true },              // e.g., "Stage été 2025"
-  entreprise: { type: String, required: true },       // e.g., "TechCorp"
-  poste: { type: String, required: true },            // e.g., "Développeur"
+  nom: { type: String, required: true },
+  entreprise: { type: String, required: true },
+  poste: { type: String, required: true },
   dateDebut: { type: Date, required: true },
   dateFin: { type: Date, required: true },
-  description: { type: String },                             // link to CV
+  description: String,
   statut: { 
     type: String, 
     required: true, 
     enum: ["en_attente", "approuvee", "rejete"],
     default: "en_attente"
   },
-  dateCreation: { type: Date, default: Date.now }
+  
+  // Relations
+  etudiant: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // effectue
+  validePar: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // validé par (admin)
 }, { timestamps: true });
 
 const StageRequest = mongoose.model("StageRequest", stageRequestSchema);
