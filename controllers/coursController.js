@@ -2,6 +2,7 @@
 const Cours = require("../models/coursSchema");
 const Classe = require("../models/classeSchema");
 const User = require("../models/userSchema");
+const EmploiDuTemps = require("../models/emploiDuTempsSchema");
 
 // ------------------- CREATE -------------------
 module.exports.createCours = async (req, res) => {
@@ -150,6 +151,9 @@ module.exports.deleteCours = async (req, res) => {
 
     // 🧹 Supprimer le cours lui-même
     await Cours.findByIdAndDelete(req.params.id);
+    //await Examen.deleteMany({ cours: cours._id });
+    //await Presence.deleteMany({ cours: cours._id });
+     await EmploiDuTemps.updateMany({}, { $pull: { cours: cours._id } });
 
     res.status(200).json({ message: "Cours supprimé avec succès ✅" });
   } catch (error) {
@@ -164,6 +168,9 @@ module.exports.deleteAllCours = async (req, res) => {
     await Cours.deleteMany({});
     await Classe.updateMany({}, { $set: { cours: [] } });
     await User.updateMany({ role: "enseignant" }, { $set: { coursEnseignes: [] } });
+    //await Examen.deleteMany({ cours: cours._id });
+    //await Presence.deleteMany({ cours: cours._id });
+    await EmploiDuTemps.updateMany({}, { $pull: { cours: cours._id } });
 
     res.status(200).json({ message: "Tous les cours ont été supprimés ✅" });
   } catch (error) {

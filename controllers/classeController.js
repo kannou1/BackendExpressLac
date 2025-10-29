@@ -32,19 +32,30 @@ module.exports.getAllClasses = async (req, res) => {
 module.exports.getClasseById = async (req, res) => {
   try {
     const classe = await Classe.findById(req.params.id)
-      .populate("cours", "nom code semestre")
+      .populate({
+        path: "cours",
+        select: "nom code semestre",
+        populate: {
+          path: "emplois",
+          select: "jourSemaine heureDebut heureFin salle",
+        },
+      })
       .populate("etudiants", "prenom nom email")
       .populate("enseignants", "prenom nom email");
-    if (!classe) return res.status(404).json({ message: "Classe introuvable" });
+
+    if (!classe)
+      return res.status(404).json({ message: "Classe introuvable" });
 
     res.status(200).json({
       message: "Classe trouvée ✅",
       classe,
     });
   } catch (error) {
+    console.error("❌ Erreur getClasseById:", error);
     res.status(500).json({ message: error.message });
   }
 };
+
 
 // 🟠 Update (avec mise à jour des relations)
 module.exports.updateClasse = async (req, res) => {

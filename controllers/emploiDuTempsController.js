@@ -1,6 +1,6 @@
 const EmploiDuTemps = require("../models/emploiDuTempsSchema");
 
-// Create
+// CREATE
 module.exports.createEmploiDuTemps = async (req, res) => {
   try {
     const newEDT = await EmploiDuTemps.create(req.body);
@@ -10,8 +10,7 @@ module.exports.createEmploiDuTemps = async (req, res) => {
   }
 };
 
-
-// Get all
+// GET ALL
 module.exports.getAllEmploiDuTemps = async (req, res) => {
   try {
     const edt = await EmploiDuTemps.find().populate("cours");
@@ -21,46 +20,45 @@ module.exports.getAllEmploiDuTemps = async (req, res) => {
   }
 };
 
-// Get by ID
+// GET BY ID
 module.exports.getEmploiDuTempsById = async (req, res) => {
   try {
     const edt = await EmploiDuTemps.findById(req.params.id).populate("cours");
-    if (!edt) return res.status(404).json({ message: "EmploiDuTemps not found" });
+    if (!edt) return res.status(404).json({ message: "Emploi du temps introuvable" });
     res.status(200).json(edt);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// Update
+// UPDATE
 module.exports.updateEmploiDuTemps = async (req, res) => {
   try {
     const updatedEDT = await EmploiDuTemps.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedEDT) return res.status(404).json({ message: "EmploiDuTemps not found" });
+    if (!updatedEDT) return res.status(404).json({ message: "Emploi du temps introuvable" });
     res.status(200).json(updatedEDT);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
-// Delete
+// DELETE
 module.exports.deleteEmploiDuTemps = async (req, res) => {
   try {
     const deletedEDT = await EmploiDuTemps.findByIdAndDelete(req.params.id);
-    if (!deletedEDT) return res.status(404).json({ message: "EmploiDuTemps not found" });
-    res.status(200).json({ message: "EmploiDuTemps deleted successfully" });
+    if (!deletedEDT) return res.status(404).json({ message: "Emploi du temps introuvable" });
+    res.status(200).json({ message: "Emploi du temps supprimé avec succès ✅" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Delete all
+// DELETE ALL
 module.exports.deleteAllEmploiDuTemps = async (req, res) => {
   try {
     const result = await EmploiDuTemps.deleteMany({});
     res.status(200).json({
-      message: "All EmploiDuTemps deleted successfully",
+      message: "Tous les emplois du temps supprimés ✅",
       deletedCount: result.deletedCount
     });
   } catch (error) {
