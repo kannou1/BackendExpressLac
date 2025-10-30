@@ -1,68 +1,140 @@
 const Demande = require("../models/demandeSchema");
+const User = require("../models/userSchema");
 
-// Create
+/* ===========================================================
+   🟢 CREATE DEMANDE (Créer une demande d’attestation, etc.)
+=========================================================== */
 module.exports.createDemande = async (req, res) => {
   try {
-    const newDemande = await Demande.create(req.body);
-    res.status(201).json(newDemande);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
+    const { nom, type, etudiant } = req.body;
 
-// Get all
-module.exports.getAllDemandes = async (req, res) => {
-  try {
-    const demandes = await Demande.find().populate("etudiant");
-    res.status(200).json(demandes);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    if (!nom || !type || !etudiant) {
+      return res.status(400).json({ message: "Nom, type et étudiant sont obligatoires." });
+    }
 
-// Get by ID
-module.exports.getDemandeById = async (req, res) => {
-  try {
-    const demande = await Demande.findById(req.params.id).populate("etudiant");
-    if (!demande) return res.status(404).json({ message: "Demande not found" });
-    res.status(200).json(demande);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    // Vérifier si l’étudiant existe
+    const student = await User.findById(etudiant);
+    if (!student || student.role !== "etudiant") {
+      return res.status(404).json({ message: "Étudiant introuvable ou rôle invalide." });
+    }
 
+    // Créer la demande
+    const newDemande = new Demande({
+      nom,
+      type,
+      etudiant,
+      statut: "en_attente",
+    });
+    await newDemande.save();
 
-// Update
-module.exports.updateDemande = async (req, res) => {
-  try {
-    const updatedDemande = await Demande.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedDemande) return res.status(404).json({ message: "Demande not found" });
-    res.status(200).json(updatedDemande);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
+    // Ajouter l’ID de la demande à la liste des demandes de l’étudiant
+    await User.findByIdAndUpdate(etudiant, {
+      $addToSet: { demandes: newDemande._id },
+    });
 
-// Delete
-module.exports.deleteDemande = async (req, res) => {
-  try {
-    const deletedDemande = await Demande.findByIdAndDelete(req.params.id);
-    if (!deletedDemande) return res.status(404).json({ message: "Demande not found" });
-    res.status(200).json({ message: "Demande deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-// Delete all
-module.exports.deleteAllDemandes = async (req, res) => {
-  try {
-    const result = await Demande.deleteMany({});
-    res.status(200).json({
-      message: "All demandes deleted successfully",
-      deletedCount: result.deletedCount
+    res.status(201).json({
+      message: "Demande créée avec succès ✅",
+      demande: newDemande,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Erreur createDemande:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   🔵 GET ALL DEMANDES
+=========================================================== */
+module.exports.getAllDemandes = async (req, res) => {
+  try {
+    const demandes = await Demande.find()
+      .populate("etudiant", "prenom nom email classe")
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(demandes);
+  } catch (error) {
+    console.error("❌ Erreur getAllDemandes:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   🔍 GET DEMANDE BY ID
+=========================================================== */
+module.exports.getDemandeById = async (req, res) => {
+  try {
+    const demande = await Demande.findById(req.params.id)
+      .populate("etudiant", "prenom nom email classe");
+
+    if (!demande) return res.status(404).json({ message: "Demande introuvable." });
+
+    res.status(200).json(demande);
+  } catch (error) {
+    console.error("❌ Erreur getDemandeById:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   🟠 UPDATE DEMANDE (changer statut : approuvée / rejetée)
+=========================================================== */
+module.exports.updateDemande = async (req, res) => {
+  try {
+    const { statut } = req.body;
+
+    if (!["en_attente", "approuvee", "rejete"].includes(statut)) {
+      return res.status(400).json({ message: "Statut invalide." });
+    }
+
+    const updatedDemande = await Demande.findByIdAndUpdate(
+      req.params.id,
+      { statut },
+      { new: true }
+    );
+
+    if (!updatedDemande) return res.status(404).json({ message: "Demande introuvable." });
+
+    res.status(200).json({
+      message: "Statut de la demande mis à jour ✅",
+      demande: updatedDemande,
+    });
+  } catch (error) {
+    console.error("❌ Erreur updateDemande:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   🔴 DELETE DEMANDE
+=========================================================== */
+module.exports.deleteDemande = async (req, res) => {
+  try {
+    const deleted = await Demande.findByIdAndDelete(req.params.id);
+    if (!deleted) return res.status(404).json({ message: "Demande introuvable." });
+
+    // Retirer la demande du tableau de l’étudiant
+    await User.findByIdAndUpdate(deleted.etudiant, {
+      $pull: { demandes: deleted._id },
+    });
+
+    res.status(200).json({ message: "Demande supprimée avec succès ✅" });
+  } catch (error) {
+    console.error("❌ Erreur deleteDemande:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   🧨 DELETE ALL DEMANDES
+=========================================================== */
+module.exports.deleteAllDemandes = async (req, res) => {
+  try {
+    await Demande.deleteMany({});
+    await User.updateMany({}, { $set: { demandes: [] } });
+
+    res.status(200).json({ message: "Toutes les demandes ont été supprimées ✅" });
+  } catch (error) {
+    console.error("❌ Erreur deleteAllDemandes:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
