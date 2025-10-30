@@ -2,11 +2,23 @@ const express = require("express");
 const router = express.Router();
 const noteController = require("../controllers/noteController");
 
+// ===========================================================
+// 🟢 CRUD des Notes
+// ===========================================================
+
+// ➕ Créer une note
 router.post("/create", noteController.createNote);
-router.get("/getAll", noteController.getAllNotes);
+
+// 🔍 Récupérer toutes les notes
+router.get("/get", noteController.getAllNotes);
+
+// 🔍 Récupérer une note par ID
 router.get("/getById/:id", noteController.getNoteById);
-router.put("/update/:id", noteController.updateNote);
+
+// ✏️ Mettre à jour une note
+router.put("/updateById/:id", noteController.updateNote);
+
+// ❌ Supprimer une note
 router.delete("/delete/:id", noteController.deleteNote);
-router.delete("/deleteAll", noteController.deleteAllNotes);
 
 module.exports = router;

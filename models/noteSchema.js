@@ -1,15 +1,20 @@
 const mongoose = require("mongoose");
 
-const noteSchema = new mongoose.Schema({
-  nom: { type: String, required: true },
-  score: { type: Number, required: true },
-  semestre: { type: String, required: true },
-  
-  // Relations
-  examen: { type: mongoose.Schema.Types.ObjectId, ref: "Examen" }, // issue d’un examen
-  cours: { type: mongoose.Schema.Types.ObjectId, ref: "Cours" },   // lié à un cours
-  etudiant: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // reçu par un utilisateur
-}, { timestamps: true });
+const noteSchema = new mongoose.Schema(
+  {
+    score: {
+      type: Number,
+      required: true,
+      min: [0, "La note ne peut pas être négative."],
+      max: [20, "La note maximale est 20."]
+    },
 
-const Note = mongoose.model("Note", noteSchema);
-module.exports = Note;
+    // 🔗 Relations
+    examen: { type: mongoose.Schema.Types.ObjectId, ref: "Examen", required: true },
+    etudiant: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    enseignant: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Note", noteSchema);
