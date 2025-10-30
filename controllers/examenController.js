@@ -1,73 +1,133 @@
 const Examen = require("../models/examenSchema");
+const Cours = require("../models/coursSchema");
+const Classe = require("../models/classeSchema");
+const User = require("../models/userSchema");
 
-// Create
+/* ===========================================================
+   🟢 CREATE EXAM
+=========================================================== */
 module.exports.createExamen = async (req, res) => {
   try {
-    const newExamen = await Examen.create(req.body);
-    res.status(201).json(newExamen);
+    const { nom, type, date, noteMax, description, coursId, enseignantId, classeId } = req.body;
+
+    if (!nom || !type || !date || !noteMax || !coursId) {
+      return res.status(400).json({ message: "Tous les champs obligatoires ne sont pas remplis." });
+    }
+
+    // Vérifier le cours
+    const cours = await Cours.findById(coursId);
+    if (!cours) return res.status(404).json({ message: "Cours introuvable." });
+
+    // Vérifier enseignant
+    let enseignant = null;
+    if (enseignantId) {
+      enseignant = await User.findById(enseignantId);
+      if (!enseignant || enseignant.role !== "enseignant") {
+        return res.status(400).json({ message: "Enseignant introuvable ou rôle invalide." });
+      }
+    }
+
+    // Vérifier classe
+    let classe = null;
+    if (classeId) {
+      classe = await Classe.findById(classeId);
+      if (!classe) return res.status(404).json({ message: "Classe introuvable." });
+    }
+
+    // ✅ Créer l’examen
+    const newExam = new Examen({
+      nom,
+      type,
+      date,
+      noteMax,
+      description,
+      coursId,
+      enseignantId,
+      classeId,
+    });
+
+    await newExam.save();
+
+    // 🔹 Lier aux entités concernées
+    await Cours.findByIdAndUpdate(coursId, { $addToSet: { examens: newExam._id } });
+    if (classe) await Classe.findByIdAndUpdate(classeId, { $addToSet: { examens: newExam._id } });
+    if (enseignant) await User.findByIdAndUpdate(enseignantId, { $addToSet: { examens: newExam._id } });
+
+    res.status(201).json({ message: "Examen créé avec succès ✅", examen: newExam });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error("❌ Erreur createExamen:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
-// Get all
-module.exports.getAllExamen = async (req, res) => {
+/* ===========================================================
+   🔍 GET ALL EXAMS
+=========================================================== */
+module.exports.getAllExamens = async (_, res) => {
   try {
     const examens = await Examen.find()
-      .populate("cours")
-      .populate("notes");
+      .populate("coursId", "nom code")
+      .populate("enseignantId", "nom prenom email")
+      .populate("classeId", "nom annee specialisation");
+
     res.status(200).json(examens);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Erreur getAllExamens:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
-// Get by ID
-
+/* ===========================================================
+   🔍 GET EXAM BY ID
+=========================================================== */
 module.exports.getExamenById = async (req, res) => {
   try {
     const examen = await Examen.findById(req.params.id)
-      .populate("cours")
-      .populate("notes");
-    if (!examen) return res.status(404).json({ message: "Examen not found" });
+      .populate("coursId", "nom code")
+      .populate("enseignantId", "nom prenom email")
+      .populate("classeId", "nom annee specialisation");
+
+    if (!examen) return res.status(404).json({ message: "Examen introuvable." });
     res.status(200).json(examen);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Erreur getExamenById:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
-
-// Update
+/* ===========================================================
+   ✏️ UPDATE EXAM
+=========================================================== */
 module.exports.updateExamen = async (req, res) => {
   try {
-    const updatedExamen = await Examen.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!updatedExamen) return res.status(404).json({ message: "Examen not found" });
-    res.status(200).json(updatedExamen);
+    const updatedExam = await Examen.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedExam) return res.status(404).json({ message: "Examen introuvable." });
+
+    res.status(200).json({ message: "Examen mis à jour ✅", examen: updatedExam });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error("❌ Erreur updateExamen:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
-// Delete
+/* ===========================================================
+   ❌ DELETE EXAM
+=========================================================== */
 module.exports.deleteExamen = async (req, res) => {
   try {
-    const deletedExamen = await Examen.findByIdAndDelete(req.params.id);
-    if (!deletedExamen) return res.status(404).json({ message: "Examen not found" });
-    res.status(200).json({ message: "Examen deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    const deletedExam = await Examen.findByIdAndDelete(req.params.id);
+    if (!deletedExam) return res.status(404).json({ message: "Examen introuvable." });
 
-// Delete all
-module.exports.deleteAllExamen = async (req, res) => {
-  try {
-    const result = await Examen.deleteMany({});
-    res.status(200).json({
-      message: "All examens deleted successfully",
-      deletedCount: result.deletedCount
-    });
+    // 🔹 Retirer les références dans les entités associées
+    await Promise.all([
+      Cours.updateMany({}, { $pull: { examens: deletedExam._id } }),
+      Classe.updateMany({}, { $pull: { examens: deletedExam._id } }),
+      User.updateMany({}, { $pull: { examens: deletedExam._id } }),
+    ]);
+
+    res.status(200).json({ message: "Examen supprimé avec succès ✅" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("❌ Erreur deleteExamen:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };

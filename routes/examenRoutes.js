@@ -1,12 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const examenController = require("../controllers/examenController");
+const examController = require("../controllers/examenController");
 
-router.post("/create", examenController.createExamen);
-router.get("/getAll", examenController.getAllExamen);
-router.get("/getById/:id", examenController.getExamenById);
-router.put("/update/:id", examenController.updateExamen);
-router.delete("/delete/:id", examenController.deleteExamen);
-router.delete("/deleteAll", examenController.deleteAllExamen);
+// ---------- CREATE ----------
+router.post("/create", examController.createExamen);
+
+// ---------- READ ----------
+router.get("/getAll", examController.getAllExamens);
+router.get("/getById/:id", examController.getExamenById);
+
+// ---------- UPDATE ----------
+router.put("/update/:id", examController.updateExamen);
+
+// ---------- DELETE ----------
+router.delete("/delete/:id", examController.deleteExamen);
 
 module.exports = router;

@@ -4,6 +4,7 @@ const path = require("path");
 const bcrypt = require("bcrypt");
 const classeModel = require("../models/classeSchema");
 const nodemailer = require("nodemailer");
+
 // Related models for cascade delete
 const Cours = require("../models/coursSchema");
 const Examen = require("../models/examenSchema");
@@ -14,9 +15,11 @@ const Message = require("../models/messageSchema");
 const Notification = require("../models/notificationSchema");
 const StageRequest = require("../models/stageRequestSchema");
 
-// ------------------- CREATE USERS -------------------
+/* ===========================================================
+   🔹 CREATE USERS
+=========================================================== */
 
-// Créer un ADMIN
+// 🧱 Admin
 module.exports.createAdmin = async (req, res) => {
   try {
     const userData = { ...req.body, role: "admin" };
@@ -24,19 +27,19 @@ module.exports.createAdmin = async (req, res) => {
 
     const newUser = new userModel(userData);
     await newUser.save();
-    res.status(201).json({  message: "Admin créé avec succès" });
+    res.status(201).json({ message: "Admin créé avec succès" });
   } catch (error) {
     res.status(500).json({ message: "Erreur serveur", error });
   }
 };
 
-// Créer un ENSEIGNANT
+// 👨‍🏫 Enseignant
 module.exports.createEnseignant = async (req, res) => {
   try {
     const userData = { ...req.body, role: "enseignant" };
     if (req.file) userData.image_User = req.file.filename;
 
-    // 🔹 Vérifier les classes (si fournies)
+    // Vérifier les classes
     if (userData.classes && userData.classes.length > 0) {
       const classes = await classeModel.find({ _id: { $in: userData.classes } });
       if (classes.length !== userData.classes.length) {
@@ -44,30 +47,26 @@ module.exports.createEnseignant = async (req, res) => {
       }
     }
 
-    // 🔹 Créer l’enseignant
+    // Créer l’enseignant
     const newUser = new userModel(userData);
     await newUser.save();
 
-    // 🔹 Si des classes sont spécifiées, les lier des deux côtés
+    // Associer bidirectionnellement
     if (userData.classes && userData.classes.length > 0) {
       for (const classeId of userData.classes) {
         const classe = await classeModel.findById(classeId);
         if (!classe) throw new Error(`Classe introuvable (${classeId})`);
 
-        // ✅ Ajout enseignant -> classe
-        if (!Array.isArray(classe.enseignants)) classe.enseignants = [];
         if (!classe.enseignants.includes(newUser._id)) {
           classe.enseignants.push(newUser._id);
           await classe.save();
         }
 
-        // ✅ Ajout classe -> enseignant (sécurité côté user)
-        if (!Array.isArray(newUser.classes)) newUser.classes = [];
         if (!newUser.classes.includes(classe._id)) {
           newUser.classes.push(classe._id);
         }
       }
-      await newUser.save(); // enregistrer les relations côté enseignant
+      await newUser.save();
     }
 
     res.status(201).json({
@@ -80,31 +79,22 @@ module.exports.createEnseignant = async (req, res) => {
   }
 };
 
-// Créer un ÉTUDIANT
+// 🎓 Étudiant
 module.exports.createEtudiant = async (req, res) => {
   try {
-    console.log("🟢 Requête reçue:", req.body);
-
     const userData = { ...req.body, role: "etudiant" };
     if (req.file) userData.image_User = req.file.filename;
 
-    // 🔹 Classe obligatoire
     if (!userData.classe) {
       return res.status(400).json({ message: "La classe de l'étudiant est obligatoire." });
     }
 
     const classe = await classeModel.findById(userData.classe);
-    if (!classe) {
-      console.error("❌ Classe introuvable avec ID:", userData.classe);
-      return res.status(404).json({ message: "Classe introuvable." });
-    }
+    if (!classe) return res.status(404).json({ message: "Classe introuvable." });
 
-    // 🔹 Créer l’étudiant
     const newUser = new userModel(userData);
     await newUser.save();
 
-    // 🔹 Ajouter bidirectionnellement
-    if (!Array.isArray(classe.etudiants)) classe.etudiants = [];
     if (!classe.etudiants.includes(newUser._id)) {
       classe.etudiants.push(newUser._id);
       await classe.save();
@@ -125,12 +115,15 @@ module.exports.createEtudiant = async (req, res) => {
   }
 };
 
-// ------------------- GET USERS -------------------
+/* ===========================================================
+   🔍 GET USERS
+=========================================================== */
+
+// 🧾 Tous les utilisateurs
 module.exports.getAllUsers = async (req, res) => {
   try {
     const users = await userModel.find().select("-password");
 
-    // 🔹 Nettoyer les données selon le rôle
     const cleanUsers = await Promise.all(
       users.map(async (u) => {
         const user = u.toObject();
@@ -138,28 +131,19 @@ module.exports.getAllUsers = async (req, res) => {
         if (user.role === "etudiant") {
           const populated = await userModel.findById(user._id)
             .select("-password")
-            .populate("classe", "nom annee specialisation anneeAcademique")
+            .populate({
+              path: "classe",
+              select: "nom annee specialisation anneeAcademique",
+              populate: {
+                path: "examens",
+                select: "nom type date noteMax description",
+              },
+            })
             .populate("notes", "valeur examen")
             .populate("presences", "date statut cours")
-            .populate("demandes", "type statut dateCreation")
-            .populate("stagesEffectues", "titre entreprise statut dateDebut dateFin")
-            .populate("emplois", "jour heureDebut heureFin cours");
+            .populate("demandes", "type statut dateCreation");
 
-          return {
-            _id: populated._id,
-            prenom: populated.prenom,
-            nom: populated.nom,
-            email: populated.email,
-            role: populated.role,
-            image_User: populated.image_User,
-            age: populated.age,
-            classe: populated.classe,
-            notes: populated.notes,
-            presences: populated.presences,
-            demandes: populated.demandes,
-            stagesEffectues: populated.stagesEffectues,
-            emplois: populated.emplois,
-          };
+          return populated;
         }
 
         if (user.role === "enseignant") {
@@ -167,53 +151,33 @@ module.exports.getAllUsers = async (req, res) => {
             .select("-password")
             .populate("coursEnseignes", "nom code credits semestre")
             .populate({
-              path: "coursEnseignes",
-              populate: { path: "classe", select: "nom annee specialisation" }
+              path: "classes",
+              select: "nom annee specialisation anneeAcademique",
+              populate: {
+                path: "examens",
+                select: "nom type date noteMax description",
+              },
             })
             .populate("demandes", "type statut dateCreation");
 
-          return {
-            _id: populated._id,
-            prenom: populated.prenom,
-            nom: populated.nom,
-            email: populated.email,
-            role: populated.role,
-            image_User: populated.image_User,
-            specialite: populated.specialite,
-            dateEmbauche: populated.dateEmbauche,
-            NumTelEnseignant: populated.NumTelEnseignant,
-            coursEnseignes: populated.coursEnseignes,
-            demandes: populated.demandes,
-          };
+          return populated;
         }
 
-        // 🧱 Admin
-        return {
-          _id: user._id,
-          prenom: user.prenom,
-          nom: user.nom,
-          email: user.email,
-          role: user.role,
-          image_User: user.image_User,
-        };
+        return user;
       })
     );
 
     res.status(200).json(cleanUsers);
-
   } catch (error) {
     console.error("Erreur getAllUsers:", error);
     res.status(500).json({ message: "Erreur serveur", error });
   }
 };
 
-
-module.exports.getAdmins = async (req, res) => {
+// 👨‍💼 Admins
+module.exports.getAdmins = async (_, res) => {
   try {
-    const admins = await userModel
-      .find({ role: "admin" })
-      .select("prenom nom email role image_User createdAt");
-
+    const admins = await userModel.find({ role: "admin" }).select("prenom nom email role image_User createdAt");
     res.status(200).json(admins);
   } catch (error) {
     console.error("Erreur getAdmins:", error);
@@ -221,19 +185,21 @@ module.exports.getAdmins = async (req, res) => {
   }
 };
 
-
-module.exports.getEnseignants = async (req, res) => {
+// 👨‍🏫 Enseignants
+module.exports.getEnseignants = async (_, res) => {
   try {
     const enseignants = await userModel
       .find({ role: "enseignant" })
       .select("prenom nom email role specialite dateEmbauche NumTelEnseignant image_User")
       .populate("coursEnseignes", "nom code credits semestre")
       .populate({
-        path: "coursEnseignes",
-        populate: { path: "classe", select: "nom annee specialisation" }
+        path: "classes",
+        select: "nom annee specialisation anneeAcademique",
+        populate: {
+          path: "examens",
+          select: "nom type date noteMax description",
+        },
       })
-      .populate("classes", "nom annee specialisation anneeAcademique")
-
       .populate("demandes", "type statut dateCreation");
 
     res.status(200).json(enseignants);
@@ -243,19 +209,23 @@ module.exports.getEnseignants = async (req, res) => {
   }
 };
 
-
-module.exports.getEtudiants = async (req, res) => {
+// 🎓 Étudiants
+module.exports.getEtudiants = async (_, res) => {
   try {
     const etudiants = await userModel
       .find({ role: "etudiant" })
       .select("prenom nom email role age image_User")
-      .populate("classe", "nom annee specialisation anneeAcademique ")
+      .populate({
+        path: "classe",
+        select: "nom annee specialisation anneeAcademique",
+        populate: {
+          path: "examens",
+          select: "nom type date noteMax description",
+        },
+      })
       .populate("notes", "valeur examen")
       .populate("presences", "date statut cours")
-      .populate("demandes", "type statut dateCreation")
-      .populate("stagesEffectues", "titre entreprise statut dateDebut dateFin")
-      .populate("emplois", "jour heureDebut heureFin cours")
-
+      .populate("demandes", "type statut dateCreation");
 
     res.status(200).json(etudiants);
   } catch (error) {
@@ -264,93 +234,48 @@ module.exports.getEtudiants = async (req, res) => {
   }
 };
 
-// Get user by ID (with relations)
+// 🔍 User par ID
 module.exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // 🔍 Récupération de base
     const user = await userModel.findById(id).select("-password");
     if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
 
-    // 🌐 Requête avec population adaptée
     let query = userModel.findById(id).select("-password");
 
-    // 🎓 Étudiant
-    if (user.role.toLowerCase() === "etudiant") {
-  query = query
-    .populate("classe", "nom annee specialisation anneeAcademique ")
-    .populate({
-      path: "notes",
-      populate: { path: "examen", select: "titre date cours" }
-    })
-    .populate("presences", "date statut cours")
-    .populate("demandes", "type statut dateCreation")
-    .populate("stagesEffectues", "titre entreprise statut dateDebut dateFin")
-    .populate("emplois", "jour heureDebut heureFin cours");
-}
-
-
-    // 👨‍🏫 Enseignant
-    else if (user.role === "enseignant") {
-     query = query
-    .populate("classes", "nom annee specialisation anneeAcademique") // ✅ Ajouté
-    .populate("coursEnseignes", "nom code credits semestre")
-    .populate({
-      path: "coursEnseignes",
-      populate: { path: "classe", select: "nom annee specialisation" }
-    })
-    .populate("demandes", "type statut dateCreation");
-}
-
-    // 🛠️ Admin
-    else if (user.role === "admin") {
-      query = query.populate("demandes", "type statut dateCreation");
+    if (user.role === "etudiant") {
+      query = query.populate({
+        path: "classe",
+        select: "nom annee specialisation anneeAcademique",
+        populate: {
+          path: "examens",
+          select: "nom type date noteMax description",
+        },
+      });
+    } else if (user.role === "enseignant") {
+      query = query.populate({
+        path: "classes",
+        select: "nom annee specialisation anneeAcademique",
+        populate: {
+          path: "examens",
+          select: "nom type date noteMax description",
+        },
+      });
     }
 
     const populatedUser = await query.exec();
-    const cleanUser = populatedUser.toObject();
-
-    // 🧹 Suppression des champs inutiles selon le rôle
-    if (user.role === "enseignant") {
-      delete cleanUser.notes;
-      delete cleanUser.presences;
-      delete cleanUser.stagesEffectues;
-      delete cleanUser.stagesValidations;
-      delete cleanUser.emplois;
-      delete cleanUser.classe;
-    }
-
-    if (user.role === "etudiant") {
-      delete cleanUser.coursEnseignes;
-      delete cleanUser.stagesValidations;
-    }
-
-    if (user.role === "admin") {
-      delete cleanUser.coursEnseignes;
-      delete cleanUser.notes;
-      delete cleanUser.presences;
-      delete cleanUser.stagesEffectues;
-      delete cleanUser.stagesValidations;
-      delete cleanUser.emplois;
-      delete cleanUser.classe;
-    }
-
-    // 🚫 Supprimer toujours les champs inutiles pour tous les rôles
-    delete cleanUser.messages;
-    delete cleanUser.notifications;
-    delete cleanUser.resetPasswordToken;
-    delete cleanUser.resetPasswordExpires;
-    delete cleanUser.__v;
-
-    // ✅ Réponse finale propre
-    res.status(200).json(cleanUser);
-
+    res.status(200).json(populatedUser);
   } catch (error) {
     console.error("Erreur getUserById:", error);
-    res.status(500).json({ message: "Erreur lors de la récupération de l'utilisateur", error });
+    res.status(500).json({ message: "Erreur serveur", error });
   }
 };
+
+/* ===========================================================
+   ✏️ UPDATE & DELETE
+=========================================================== */
+
+// ... (reste inchangé)
 
 
 
