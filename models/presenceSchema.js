@@ -1,13 +1,40 @@
 const mongoose = require("mongoose");
 
-const presenceSchema = new mongoose.Schema({
-  date: { type: Date, required: true },
-  statut: { type: String, required: true, enum: ["présent", "absent"] },
+const presenceSchema = new mongoose.Schema(
+  {
+    date: {
+      type: Date,
+      required: true,
+      default: Date.now,
+    },
 
-  // Relations
-  cours: { type: mongoose.Schema.Types.ObjectId, ref: "Cours" }, // suivi dans
-  etudiant: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // assiste
-}, { timestamps: true });
+    statut: {
+      type: String,
+      required: true,
+      enum: ["présent", "absent", "retard"],
+      default: "présent",
+    },
 
-const Presence = mongoose.model("Presence", presenceSchema);
-module.exports = Presence;
+    // Relations
+    cours: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Cours",
+      required: true,
+    }, // Cours concerné
+
+    etudiant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    }, // Étudiant concerné
+
+    enseignant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
+
+module.exports = mongoose.model("Presence", presenceSchema);
