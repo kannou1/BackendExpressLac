@@ -180,80 +180,41 @@ module.exports.getTauxPresence = async (req, res) => {
   }
 };
 
-/* ===========================================================
-   📚 2. TAUX DE PRÉSENCE DE TOUS LES ÉTUDIANTS D’UN COURS
-=========================================================== */
-module.exports.getTauxPresenceByCours = async (req, res) => {
+// 📊 Taux de présence par cours
+module.exports.getTauxPresenceParCours = async (req, res) => {
   try {
     const { coursId } = req.params;
 
-    // 1️⃣ Vérifier si le cours existe
-    const cours = await Cours.findById(coursId)
-      .populate("etudiants", "prenom nom email");
+    // Vérifier si le cours existe
+    const cours = await Cours.findById(coursId);
     if (!cours) {
       return res.status(404).json({ message: "Cours introuvable." });
     }
 
-    // 2️⃣ Récupérer toutes les présences liées à ce cours
-    const presences = await Presence.find({ cours: coursId })
-      .populate("etudiant", "prenom nom email");
+    // Récupérer toutes les présences du cours
+    const presences = await Presence.find({ cours: coursId });
 
-    if (!presences || presences.length === 0) {
-      return res.status(404).json({ message: "Aucune donnée de présence pour ce cours." });
+    if (presences.length === 0) {
+      return res.status(200).json({ message: "Aucune présence enregistrée pour ce cours.", taux: 0 });
     }
 
-    // 3️⃣ Calcul du taux pour chaque étudiant inscrit dans le cours
-    const resultats = cours.etudiants.map((etudiant) => {
-      const presEtudiant = presences.filter(
-        (p) => p.etudiant && p.etudiant._id.toString() === etudiant._id.toString()
-      );
+    // Compter les présences "présent"
+    const presents = presences.filter(p => p.statut === "présent").length;
+    const taux = ((presents / presences.length) * 100).toFixed(2);
 
-      if (presEtudiant.length === 0) {
-        return {
-          etudiant: {
-            _id: etudiant._id,
-            prenom: etudiant.prenom,
-            nom: etudiant.nom,
-            email: etudiant.email,
-          },
-          tauxPresence: "0%",
-          total: 0,
-          presents: 0,
-        };
-      }
-
-      const total = presEtudiant.length;
-      const presents = presEtudiant.filter((p) => p.statut === "présent").length;
-      const taux = ((presents / total) * 100).toFixed(2);
-
-      return {
-        etudiant: {
-          _id: etudiant._id,
-          prenom: etudiant.prenom,
-          nom: etudiant.nom,
-          email: etudiant.email,
-        },
-        tauxPresence: `${taux}%`,
-        total,
-        presents,
-      };
-    });
-
-    // 4️⃣ Réponse finale
     res.status(200).json({
-      coursId,
-      coursNom: cours.nom,
-      nombreEtudiants: resultats.length,
-      tauxPresenceParEtudiant: resultats,
+      message: "Taux de présence calculé avec succès ✅",
+      cours: cours.nom,
+      total: presences.length,
+      presents,
+      taux: `${taux}%`
     });
   } catch (error) {
-    console.error("❌ Erreur getTauxPresenceByCours:", error);
-    res.status(500).json({
-      message: "Erreur interne du serveur.",
-      error: error.message,
-    });
+    console.error("❌ Erreur getTauxPresenceParCours:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
+
 
 /* ===========================================================
    ✏️ UPDATE PRESENCE

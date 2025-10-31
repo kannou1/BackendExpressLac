@@ -24,11 +24,15 @@ router.get("/getByEnseignant/:enseignantId", presenceController.getPresenceByEns
 // 🔍 Récupérer toutes les présences d’un cours
 router.get("/getByCours/:coursId", presenceController.getPresenceByCours);
 
-// 📊 Taux de présence d’un étudiant (global ou par cours)
-router.get("/taux/:etudiantId", presenceController.getTauxPresence);
-router.get("/taux/:etudiantId/:coursId", presenceController.getTauxPresence);
-// 📚 Taux de présence de tous les étudiants d’un cours
-router.get("/taux/cours/:coursId", presenceController.getTauxPresenceByCours);
+// 📊 Taux de présence d’un étudiant (tous les cours)
+router.get("/taux/etudiant/:etudiantId", presenceController.getTauxPresence);
+
+// 📊 Taux de présence d’un étudiant pour un cours précis
+router.get("/taux/etudiant/:etudiantId/cours/:coursId", presenceController.getTauxPresence);
+
+// 📚 Taux de présence global d’un cours
+router.get("/taux/cours/:coursId", presenceController.getTauxPresenceParCours);
+
 // ✏️ Mettre à jour une présence
 router.put("/update/:id", presenceController.updatePresence);
 
