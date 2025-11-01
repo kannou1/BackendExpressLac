@@ -45,7 +45,6 @@ const userSchema = new mongoose.Schema({
   messages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }], // envoie/reçoit
   emplois: [{ type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" }],
   notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }], // reçoit
-  stagesEffectues: [{ type: mongoose.Schema.Types.ObjectId, ref: "StageRequest" }], // effectue
   examensCrees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Examen" }], // crée 
    // Reset Password
   resetCode: String,

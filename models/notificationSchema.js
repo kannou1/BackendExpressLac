@@ -2,12 +2,16 @@ const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema({
   message: { type: String, required: true },
-  type: { type: String, required: true, enum: ["alerte", "systeme", "rappel"] },
+  type: { 
+    type: String, 
+    required: true, 
+    enum: ["alerte", "systeme", "rappel"], 
+    default: "systeme" 
+  },
   estLu: { type: Boolean, default: false },
-  
-  // Relations
-  utilisateur: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // reçoit
+
+  // 🔗 Lien vers l'utilisateur concerné
+  utilisateur: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 }, { timestamps: true });
 
-const Notification = mongoose.model("Notification", notificationSchema);
-module.exports = Notification;
+module.exports = mongoose.model("Notification", notificationSchema);
