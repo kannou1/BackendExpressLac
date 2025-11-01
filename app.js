@@ -3,13 +3,13 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
-
-const http = require('http'); //1 importation du module http
+const http = require('http');
+const { Server } = require('socket.io'); // ✅ importation de socket.io
 
 require('dotenv').config();
-
 const { connectToMongoDB } = require('./db/db');
 
+// === ROUTES ===
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/usersRouter');
 const classeRoutes = require('./routes/classeRoutes');
@@ -19,14 +19,10 @@ const examenRoutes = require('./routes/examenRoutes');
 const noteRoutes = require('./routes/noteRoutes');
 const presenceRoutes = require('./routes/presenceRoutes');
 const demandeRoutes = require('./routes/demandeRoutes');
-const stageRequestRoutes = require('./routes/stageRequestRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
-
-
 var app = express();
-
 
 app.use(logger('dev'));
 app.use(express.json());
@@ -34,6 +30,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// === UTILISATION DES ROUTES ===
 app.use('/index', indexRouter);
 app.use('/users', usersRouter);
 app.use('/classes', classeRoutes);
@@ -43,32 +40,58 @@ app.use('/examen', examenRoutes);
 app.use('/note', noteRoutes);
 app.use('/presence', presenceRoutes);
 app.use('/demande', demandeRoutes);
-app.use('/stageRequest', stageRequestRoutes);
 app.use('/message', messageRoutes);
 app.use('/notification', notificationRoutes);
 
-
-
-// catch 404 and forward to error handler
-app.use(function(req, res, next) {
+// === Gestion des erreurs ===
+app.use(function (req, res, next) {
   next(createError(404));
 });
-
-// error handler
-app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
-  res.status(err.status || 500)
-  res.json('error');
+app.use(function (err, req, res, next) {
+  res.status(err.status || 500);
+  res.json({ message: err.message });
 });
 
-const server = http.createServer(app); //2 creation du serveur
+// === CREATION DU SERVEUR HTTP ===
+const server = http.createServer(app);
 
-//3 le serveur ecoute sur le port 5000
-server.listen(process.env.Port, () => {
+// === 🔥 AJOUT DU SERVEUR SOCKET.IO ===
+const io = new Server(server, {
+  cors: {
+    origin: "*", // autorise toutes les origines pour le test (à restreindre en prod)
+    methods: ["GET", "POST"]
+  }
+});
+
+// === 🔌 LOGIQUE SOCKET.IO ===
+io.on('connection', (socket) => {
+  console.log('🟢 Nouvelle connexion socket:', socket.id);
+
+  // Rejoindre la room du user
+  socket.on('join', (userId) => {
+    socket.join(userId);
+    console.log(`👤 User ${userId} a rejoint sa room.`);
+  });
+
+  // Réception d’un message temps réel
+  socket.on('sendMessage', (data) => {
+    console.log('📩 Message reçu:', data);
+
+    // Envoyer le message en temps réel au destinataire
+    io.to(data.receiverId).emit('receiveMessage', {
+      senderId: data.senderId,
+      text: data.text,
+      date: new Date()
+    });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('🔴 Déconnexion socket:', socket.id);
+  });
+});
+
+// === LANCEMENT DU SERVEUR ===
+server.listen(process.env.PORT || 5000, () => {
   connectToMongoDB();
-  console.log('Server is running on port 5000');
+  console.log('✅ Serveur HTTP & Socket.IO lancé sur le port 5000');
 });

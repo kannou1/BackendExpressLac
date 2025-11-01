@@ -13,7 +13,6 @@ const Presence = require("../models/presenceSchema");
 const Demande = require("../models/demandeSchema");
 const Message = require("../models/messageSchema");
 const Notification = require("../models/notificationSchema");
-const StageRequest = require("../models/stageRequestSchema");
 
 /* ===========================================================
    🔹 CREATE USERS
@@ -226,7 +225,7 @@ module.exports.getEtudiants = async (_, res) => {
       .populate("notes", "valeur examen")
       .populate("presences", "date statut cours")
       .populate("demandes", "type statut dateCreation");
-
+ 
     res.status(200).json(etudiants);
   } catch (error) {
     console.error("Erreur getEtudiants:", error);
