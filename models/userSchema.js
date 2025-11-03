@@ -21,11 +21,12 @@ const userSchema = new mongoose.Schema({
   image_User: { type: String, default: 'client.png' },
   verified: { type: Boolean, default: false },
   Status: { type: Boolean, default: false },
-   // Etudiant
+
+  // Étudiant
   NumTel: String,
   Adresse: String,
   datedeNaissance: Date,
-  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" }, // Relation: appartient à une classe
+  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" }, // ✅ garde seulement celle-là
   dateInscription: Date,
 
   // Enseignant
@@ -35,18 +36,19 @@ const userSchema = new mongoose.Schema({
 
   // Admin
   adminCode: String,
+
   // Relations
-  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" },
-  classes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Classe" }], // appartient à une classe
-  coursEnseignes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cours" }], // enseignant
-  notes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Note" }], // reçoit
-  presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }], // assiste
-  demandes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Demande" }], // effectue
-  messages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }], // envoie/reçoit
+  classes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Classe" }], // pour enseignant
+  coursEnseignes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cours" }],
+  notes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Note" }],
+  presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }],
+  demandes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Demande" }],
+  messages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
   emplois: [{ type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" }],
-  notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }], // reçoit
-  examensCrees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Examen" }], // crée 
-   // Reset Password
+  notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }],
+  examensCrees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Examen" }],
+
+  // Reset Password
   resetCode: String,
   resetCodeExpires: Date,
 }, { timestamps: true });
@@ -64,12 +66,12 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Method to compare password
+// Compare password
 userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Log on creation
+// Log creation
 userSchema.post('save', function(doc, next) {
   console.log('New user created: ', doc.email);
   next();

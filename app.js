@@ -1,3 +1,4 @@
+// === IMPORTS ===
 var createError = require('http-errors');
 var express = require('express');
 var path = require('path');
@@ -21,6 +22,7 @@ const demandeRoutes = require('./routes/demandeRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
+// === APP EXPRESS ===
 var app = express();
 
 app.use(logger('dev'));
@@ -37,7 +39,10 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] },
 });
 
-// ✅ Middleware pour rendre io accessible dans toutes les requêtes
+// ✅ Enregistrer `io` globalement pour que les contrôleurs puissent l’utiliser via `req.app.get("io")`
+app.set("io", io);
+
+// ✅ Middleware pour rendre `io` accessible directement dans `req`
 app.use((req, res, next) => {
   req.io = io;
   next();
@@ -62,15 +67,22 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ message: err.message });
 });
 
-// === SOCKET EVENTS ===
+// === SOCKET.IO EVENTS ===
 io.on('connection', (socket) => {
   console.log('🟢 Nouvelle connexion socket:', socket.id);
 
+  // Quand un utilisateur rejoint sa room
   socket.on('join', (userId) => {
     socket.join(userId);
     console.log(`👤 Utilisateur ${userId} a rejoint sa room.`);
   });
 
+  socket.on('joinRoom', (userId) => {
+    socket.join(userId);
+    console.log(`👤 Utilisateur ${userId} a rejoint sa room (via joinRoom).`);
+  });
+
+  // Messages directs
   socket.on('sendMessage', (data) => {
     console.log('📩 Nouveau message:', data);
     io.to(data.receiverId).emit('receiveMessage', {
@@ -80,6 +92,7 @@ io.on('connection', (socket) => {
     });
   });
 
+  // Notifications manuelles
   socket.on('sendNotification', (notif) => {
     console.log('🔔 Nouvelle notification:', notif);
     io.to(notif.userId).emit('receiveNotification', {
@@ -94,10 +107,11 @@ io.on('connection', (socket) => {
   });
 });
 
-// === LANCEMENT ===
-server.listen(process.env.PORT || 5000, () => {
+// === LANCEMENT DU SERVEUR ===
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
   connectToMongoDB();
-  console.log('✅ Serveur HTTP & Socket.IO lancé sur le port 5000');
+  console.log(`✅ Serveur HTTP & Socket.IO lancé sur le port ${PORT}`);
 });
 
 module.exports = { io };

@@ -13,6 +13,8 @@ const Presence = require("../models/presenceSchema");
 const Demande = require("../models/demandeSchema");
 const Message = require("../models/messageSchema");
 const Notification = require("../models/notificationSchema");
+// ⚠️ Vérifie que StageRequest existe sinon commente la ligne
+// const StageRequest = require("../models/stageRequestSchema");
 
 /* ===========================================================
    🔹 CREATE USERS
@@ -26,9 +28,11 @@ module.exports.createAdmin = async (req, res) => {
 
     const newUser = new userModel(userData);
     await newUser.save();
-    res.status(201).json({ message: "Admin créé avec succès" });
+
+    res.status(201).json({ message: "Admin créé avec succès ✅", newUser });
   } catch (error) {
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur createAdmin:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
@@ -38,7 +42,7 @@ module.exports.createEnseignant = async (req, res) => {
     const userData = { ...req.body, role: "enseignant" };
     if (req.file) userData.image_User = req.file.filename;
 
-    // Vérifier les classes
+    // Vérifie que les classes existent
     if (userData.classes && userData.classes.length > 0) {
       const classes = await classeModel.find({ _id: { $in: userData.classes } });
       if (classes.length !== userData.classes.length) {
@@ -46,15 +50,14 @@ module.exports.createEnseignant = async (req, res) => {
       }
     }
 
-    // Créer l’enseignant
     const newUser = new userModel(userData);
     await newUser.save();
 
-    // Associer bidirectionnellement
+    // Associer bidirectionnellement enseignant ↔ classes
     if (userData.classes && userData.classes.length > 0) {
       for (const classeId of userData.classes) {
         const classe = await classeModel.findById(classeId);
-        if (!classe) throw new Error(`Classe introuvable (${classeId})`);
+        if (!classe) continue;
 
         if (!classe.enseignants.includes(newUser._id)) {
           classe.enseignants.push(newUser._id);
@@ -94,6 +97,7 @@ module.exports.createEtudiant = async (req, res) => {
     const newUser = new userModel(userData);
     await newUser.save();
 
+    // Associer bidirectionnellement
     if (!classe.etudiants.includes(newUser._id)) {
       classe.etudiants.push(newUser._id);
       await classe.save();
@@ -128,38 +132,28 @@ module.exports.getAllUsers = async (req, res) => {
         const user = u.toObject();
 
         if (user.role === "etudiant") {
-          const populated = await userModel.findById(user._id)
+          return await userModel.findById(user._id)
             .select("-password")
             .populate({
               path: "classe",
               select: "nom annee specialisation anneeAcademique",
-              populate: {
-                path: "examens",
-                select: "nom type date noteMax description",
-              },
+              populate: { path: "examens", select: "nom type date noteMax description" },
             })
             .populate("notes", "valeur examen")
             .populate("presences", "date statut cours")
-            .populate("demandes", "type statut dateCreation");
-
-          return populated;
+            .populate("demandes", "type statut createdAt");
         }
 
         if (user.role === "enseignant") {
-          const populated = await userModel.findById(user._id)
+          return await userModel.findById(user._id)
             .select("-password")
             .populate("coursEnseignes", "nom code credits semestre")
             .populate({
               path: "classes",
               select: "nom annee specialisation anneeAcademique",
-              populate: {
-                path: "examens",
-                select: "nom type date noteMax description",
-              },
+              populate: { path: "examens", select: "nom type date noteMax description" },
             })
-            .populate("demandes", "type statut dateCreation");
-
-          return populated;
+            .populate("demandes", "type statut createdAt");
         }
 
         return user;
@@ -168,8 +162,9 @@ module.exports.getAllUsers = async (req, res) => {
 
     res.status(200).json(cleanUsers);
   } catch (error) {
-    console.error("Erreur getAllUsers:", error);
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur getAllUsers:", error.message);
+    console.error(error.stack);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
@@ -179,8 +174,8 @@ module.exports.getAdmins = async (_, res) => {
     const admins = await userModel.find({ role: "admin" }).select("prenom nom email role image_User createdAt");
     res.status(200).json(admins);
   } catch (error) {
-    console.error("Erreur getAdmins:", error);
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur getAdmins:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
@@ -194,17 +189,14 @@ module.exports.getEnseignants = async (_, res) => {
       .populate({
         path: "classes",
         select: "nom annee specialisation anneeAcademique",
-        populate: {
-          path: "examens",
-          select: "nom type date noteMax description",
-        },
+        populate: { path: "examens", select: "nom type date noteMax description" },
       })
-      .populate("demandes", "type statut dateCreation");
+      .populate("demandes", "type statut createdAt");
 
     res.status(200).json(enseignants);
   } catch (error) {
-    console.error("Erreur getEnseignants:", error);
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur getEnseignants:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
@@ -213,23 +205,20 @@ module.exports.getEtudiants = async (_, res) => {
   try {
     const etudiants = await userModel
       .find({ role: "etudiant" })
-      .select("prenom nom email role age image_User")
+      .select("prenom nom email role image_User")
       .populate({
         path: "classe",
         select: "nom annee specialisation anneeAcademique",
-        populate: {
-          path: "examens",
-          select: "nom type date noteMax description",
-        },
+        populate: { path: "examens", select: "nom type date noteMax description" },
       })
       .populate("notes", "valeur examen")
       .populate("presences", "date statut cours")
-      .populate("demandes", "type statut dateCreation");
- 
+      .populate("demandes", "type statut createdAt");
+
     res.status(200).json(etudiants);
   } catch (error) {
-    console.error("Erreur getEtudiants:", error);
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur getEtudiants:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
@@ -246,37 +235,27 @@ module.exports.getUserById = async (req, res) => {
       query = query.populate({
         path: "classe",
         select: "nom annee specialisation anneeAcademique",
-        populate: {
-          path: "examens",
-          select: "nom type date noteMax description",
-        },
+        populate: { path: "examens", select: "nom type date noteMax description" },
       });
     } else if (user.role === "enseignant") {
       query = query.populate({
         path: "classes",
         select: "nom annee specialisation anneeAcademique",
-        populate: {
-          path: "examens",
-          select: "nom type date noteMax description",
-        },
+        populate: { path: "examens", select: "nom type date noteMax description" },
       });
     }
 
     const populatedUser = await query.exec();
     res.status(200).json(populatedUser);
   } catch (error) {
-    console.error("Erreur getUserById:", error);
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur getUserById:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
 /* ===========================================================
    ✏️ UPDATE & DELETE
 =========================================================== */
-
-// ... (reste inchangé)
-
-
 
 // ------------------- UPDATE USER -------------------
 module.exports.updateUserById = async (req, res) => {
@@ -287,23 +266,21 @@ module.exports.updateUserById = async (req, res) => {
     const user = await userModel.findById(id);
     if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
 
-    // Gérer les images
     if (req.file) {
       if (user.image_User) await deleteImageFile(user.image_User);
       updateData.image_User = req.file.filename;
     }
 
-    // 🔁 Si changement de classe (étudiant)
+    // 🔁 Gestion classe (étudiant)
     if (user.role === "etudiant" && updateData.classe && updateData.classe !== user.classe?.toString()) {
       if (user.classe) await classeModel.updateOne({ _id: user.classe }, { $pull: { etudiants: id } });
       await classeModel.updateOne({ _id: updateData.classe }, { $addToSet: { etudiants: id } });
     }
 
-    // 🔁 Si changement de classes (enseignant)
+    // 🔁 Gestion classes (enseignant)
     if (user.role === "enseignant" && updateData.classes) {
-      const oldClasses = user.classes.map(c => c.toString());
+      const oldClasses = user.classes.map((c) => c.toString());
       const newClasses = updateData.classes;
-
       await classeModel.updateMany({ _id: { $in: oldClasses } }, { $pull: { enseignants: id } });
       await classeModel.updateMany({ _id: { $in: newClasses } }, { $addToSet: { enseignants: id } });
     }
@@ -311,9 +288,11 @@ module.exports.updateUserById = async (req, res) => {
     const updatedUser = await userModel.findByIdAndUpdate(id, updateData, { new: true });
     res.status(200).json({ message: "Utilisateur mis à jour ✅", updatedUser });
   } catch (error) {
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur updateUserById:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
+
 // ------------------- UPDATE PASSWORD -------------------
 module.exports.updatePassword = async (req, res) => {
   try {
@@ -324,20 +303,19 @@ module.exports.updatePassword = async (req, res) => {
     if (!user) return res.status(404).json({ message: "Utilisateur introuvable." });
 
     const isMatch = await user.comparePassword(oldPassword);
-    if (!isMatch)
-      return res.status(400).json({ message: "Ancien mot de passe incorrect." });
+    if (!isMatch) return res.status(400).json({ message: "Ancien mot de passe incorrect." });
 
     const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        message:
-          "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre.",
+        message: "Le mot de passe doit contenir au moins 8 caractères, une majuscule, une minuscule et un chiffre.",
       });
     }
 
     user.password = newPassword;
     await user.save();
 
+    // ✅ Email notification
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -358,19 +336,14 @@ module.exports.updatePassword = async (req, res) => {
       `,
     });
 
-    res.status(200).json({
-      message: "Mot de passe mis à jour et email de confirmation envoyé !",
-    });
+    res.status(200).json({ message: "Mot de passe mis à jour et email de confirmation envoyé ✅" });
   } catch (error) {
-    console.error("Erreur updatePassword:", error);
-    res.status(500).json({
-      message: "Erreur lors de la mise à jour du mot de passe.",
-      error: error.message,
-    });
+    console.error("❌ Erreur updatePassword:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
-// ------------------- DELETE USER (Cascade Delete) -------------------
+// ------------------- DELETE USER -------------------
 module.exports.deleteUserById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -392,17 +365,17 @@ module.exports.deleteUserById = async (req, res) => {
       Examen.deleteMany({ enseignant: id }),
       Note.deleteMany({ etudiant: id }),
       Presence.deleteMany({ etudiant: id }),
-      Demande.deleteMany({ utilisateur: id }),
+      Demande.deleteMany({ etudiant: id }),
       Message.deleteMany({ $or: [{ expediteur: id }, { destinataire: id }] }),
       Notification.deleteMany({ utilisateur: id }),
-      StageRequest.deleteMany({ $or: [{ etudiant: id }, { validePar: id }] })
+      // StageRequest && StageRequest.deleteMany({ $or: [{ etudiant: id }, { validePar: id }] })
     ]);
 
     await userModel.findByIdAndDelete(id);
     res.status(200).json({ message: "Utilisateur et données liées supprimés ✅" });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur deleteUserById:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
@@ -411,20 +384,22 @@ module.exports.deleteUserById = async (req, res) => {
 =========================================================== */
 
 const deleteImageFile = async (filename) => {
-  if (!filename || ["default.png", "placeholder.jpg"].includes(filename)) return;
+  if (!filename || ["default.png", "placeholder.jpg", "client.png"].includes(filename)) return;
   const filePath = path.join(__dirname, "..", "public", "images", filename);
   try {
     await fs.promises.unlink(filePath);
   } catch (err) {
-    if (err.code !== "ENOENT") console.error("Erreur suppression fichier image:", err);
+    if (err.code !== "ENOENT") console.error("Erreur suppression fichier image:", err.message);
   }
 };
-//delete all users with all their related data
+
+// ------------------- DELETE ALL USERS -------------------
 module.exports.deleteAllUsers = async (req, res) => {
   try {
     await userModel.deleteMany({});
     res.status(200).json({ message: "Tous les utilisateurs ont été supprimés ✅" });
   } catch (error) {
-    res.status(500).json({ message: "Erreur serveur", error });
+    console.error("❌ Erreur deleteAllUsers:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
-}; 
+};

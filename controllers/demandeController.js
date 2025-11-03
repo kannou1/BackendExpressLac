@@ -1,8 +1,9 @@
 const Demande = require("../models/demandeSchema");
 const User = require("../models/userSchema");
+const Notification = require("../models/notificationSchema");
 
 /* ===========================================================
-   🟢 CREATE DEMANDE (Créer une demande d’attestation, etc.)
+   🟢 CREATE DEMANDE — Étudiant crée une demande
 =========================================================== */
 module.exports.createDemande = async (req, res) => {
   try {
@@ -12,25 +13,52 @@ module.exports.createDemande = async (req, res) => {
       return res.status(400).json({ message: "Nom, type et étudiant sont obligatoires." });
     }
 
-    // Vérifier si l’étudiant existe
+    // Vérification que l’étudiant existe bien
     const student = await User.findById(etudiant);
     if (!student || student.role !== "etudiant") {
       return res.status(404).json({ message: "Étudiant introuvable ou rôle invalide." });
     }
 
-    // Créer la demande
-    const newDemande = new Demande({
+    // Création de la demande
+    const newDemande = await Demande.create({
       nom,
       type,
       etudiant,
       statut: "en_attente",
     });
-    await newDemande.save();
 
-    // Ajouter l’ID de la demande à la liste des demandes de l’étudiant
+    // Ajout de la demande dans la liste de l’étudiant
     await User.findByIdAndUpdate(etudiant, {
       $addToSet: { demandes: newDemande._id },
     });
+
+    /* ===========================================================
+       📢 NOTIFICATIONS POUR LES ADMINS
+    ============================================================ */
+    const admins = await User.find({ role: "admin" });
+    const io = req.io || req.app?.get("io");
+    const message = `📄 ${student.prenom} ${student.nom} a demandé une ${nom}.`;
+
+    for (const admin of admins) {
+      const notif = await Notification.create({
+        message,
+        type: "demande",
+        utilisateur: admin._id,
+      });
+
+      await User.findByIdAndUpdate(admin._id, {
+        $push: { notifications: notif._id },
+      });
+
+      // Émission en temps réel (si connecté)
+      if (io) {
+        io.to(admin._id.toString()).emit("receiveNotification", {
+          message,
+          type: "demande",
+          date: new Date(),
+        });
+      }
+    }
 
     res.status(201).json({
       message: "Demande créée avec succès ✅",
@@ -66,7 +94,9 @@ module.exports.getDemandeById = async (req, res) => {
     const demande = await Demande.findById(req.params.id)
       .populate("etudiant", "prenom nom email classe");
 
-    if (!demande) return res.status(404).json({ message: "Demande introuvable." });
+    if (!demande) {
+      return res.status(404).json({ message: "Demande introuvable." });
+    }
 
     res.status(200).json(demande);
   } catch (error) {
@@ -76,23 +106,67 @@ module.exports.getDemandeById = async (req, res) => {
 };
 
 /* ===========================================================
-   🟠 UPDATE DEMANDE (changer statut : approuvée / rejetée)
+   🟠 UPDATE DEMANDE — Admin change le statut
 =========================================================== */
 module.exports.updateDemande = async (req, res) => {
   try {
     const { statut } = req.body;
 
+    // Vérification du statut
     if (!["en_attente", "approuvee", "rejete"].includes(statut)) {
       return res.status(400).json({ message: "Statut invalide." });
     }
 
+    // Mise à jour de la demande
     const updatedDemande = await Demande.findByIdAndUpdate(
       req.params.id,
       { statut },
       { new: true }
-    );
+    ).populate("etudiant", "prenom nom");
 
-    if (!updatedDemande) return res.status(404).json({ message: "Demande introuvable." });
+    if (!updatedDemande) {
+      return res.status(404).json({ message: "Demande introuvable." });
+    }
+
+    const etu = updatedDemande.etudiant;
+    const io = req.io || req.app?.get("io");
+
+    // Message selon le statut
+    let message;
+    switch (statut) {
+      case "approuvee":
+        message = `✅ Votre demande "${updatedDemande.nom}" a été approuvée. Vous pouvez la récupérer.`;
+        break;
+      case "rejete":
+        message = `❌ Votre demande "${updatedDemande.nom}" a été rejetée.`;
+        break;
+      case "en_attente":
+        message = `⏳ Votre demande "${updatedDemande.nom}" est en cours de traitement.`;
+        break;
+    }
+
+    // Création de la notification en base
+    const notif = await Notification.create({
+      message,
+      type: "demande",
+      utilisateur: etu._id,
+    });
+
+    await User.findByIdAndUpdate(etu._id, {
+      $push: { notifications: notif._id },
+    });
+
+    // === Envoi en temps réel via Socket.IO ===
+    if (io) {
+      console.log(`🔔 Envoi de la notification en temps réel à ${etu._id}`);
+      io.to(etu._id.toString()).emit("receiveNotification", {
+        message,
+        type: "demande",
+        date: new Date(),
+      });
+    } else {
+      console.warn("⚠️ io non trouvé, impossible d'envoyer la notification en direct.");
+    }
 
     res.status(200).json({
       message: "Statut de la demande mis à jour ✅",
@@ -104,15 +178,17 @@ module.exports.updateDemande = async (req, res) => {
   }
 };
 
+
 /* ===========================================================
    🔴 DELETE DEMANDE
 =========================================================== */
 module.exports.deleteDemande = async (req, res) => {
   try {
     const deleted = await Demande.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Demande introuvable." });
+    if (!deleted) {
+      return res.status(404).json({ message: "Demande introuvable." });
+    }
 
-    // Retirer la demande du tableau de l’étudiant
     await User.findByIdAndUpdate(deleted.etudiant, {
       $pull: { demandes: deleted._id },
     });
