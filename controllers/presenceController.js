@@ -1,6 +1,7 @@
 const Presence = require("../models/presenceSchema");
 const User = require("../models/userSchema");
 const Cours = require("../models/coursSchema");
+const Notification = require("../models/notificationSchema"); // <-- AJOUTÉ
 
 /* ===========================================================
    🟢 CREATE PRESENCE
@@ -48,6 +49,38 @@ module.exports.createPresence = async (req, res) => {
       User.findByIdAndUpdate(etudiant, { $addToSet: { presences: newPresence._id } }),
       Cours.findByIdAndUpdate(cours, { $addToSet: { presences: newPresence._id } }),
     ]);
+
+    /* ===========================================================
+       ⚠️ Vérifier le nombre d’absences de l’étudiant dans ce cours
+    ============================================================ */
+    if (statut === "absent") {
+      const absences = await Presence.countDocuments({ etudiant, cours, statut: "absent" });
+
+      if (absences === 2) {
+        const message = `⚠️ Vous avez 2 absences dans le cours "${coursData.nom}". Une autre absence pourrait entraîner votre élimination.`;
+
+        // ✅ Créer une notification
+        const notif = await Notification.create({
+          message,
+          type: "avertissement",
+          utilisateur: etudiant,
+        });
+
+        // L’ajouter dans les notifications de l’utilisateur
+        await User.findByIdAndUpdate(etudiant, { $push: { notifications: notif._id } });
+
+        // ⚡ Envoi en temps réel si Socket.IO dispo
+        if (req.io) {
+          req.io.to(etudiant.toString()).emit("receiveNotification", {
+            message,
+            type: "avertissement",
+            date: new Date(),
+          });
+        }
+
+        console.log(`🚨 Notification envoyée à ${etudiantData.prenom} ${etudiantData.nom}`);
+      }
+    }
 
     res.status(201).json({ message: "Présence enregistrée avec succès ✅", presence: newPresence });
   } catch (error) {
