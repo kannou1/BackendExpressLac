@@ -1,24 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const noteController = require("../controllers/noteController");
-
-// ===========================================================
-// 🟢 CRUD des Notes
-// ===========================================================
+const { requireAuthUser } = require("../middlewares/authMiddlewares");
+const { ControledAcces } = require("../middlewares/AccessControllers");
 
 // ➕ Créer une note
-router.post("/create", noteController.createNote);
+router.post("/create", requireAuthUser, ControledAcces("admin", "enseignant"), noteController.createNote);
 
 // 🔍 Récupérer toutes les notes
-router.get("/get", noteController.getAllNotes);
+router.get("/get", requireAuthUser, ControledAcces("admin", "enseignant"), noteController.getAllNotes);
 
 // 🔍 Récupérer une note par ID
-router.get("/getById/:id", noteController.getNoteById);
+router.get("/getById/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), noteController.getNoteById);
 
 // ✏️ Mettre à jour une note
-router.put("/updateById/:id", noteController.updateNote);
+router.put("/updateById/:id", requireAuthUser, ControledAcces("admin", "enseignant"), noteController.updateNote);
 
 // ❌ Supprimer une note
-router.delete("/delete/:id", noteController.deleteNote);
+router.delete("/delete/:id", requireAuthUser, ControledAcces("admin"), noteController.deleteNote);
 
 module.exports = router;

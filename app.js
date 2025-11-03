@@ -21,6 +21,7 @@ const presenceRoutes = require('./routes/presenceRoutes');
 const demandeRoutes = require('./routes/demandeRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const authLogMiddleware = require("./middlewares/authLogMiddleware");
 
 // === APP EXPRESS ===
 var app = express();
@@ -47,6 +48,9 @@ app.use((req, res, next) => {
   req.io = io;
   next();
 });
+
+// Doit venir avant tes routes
+app.use(authLogMiddleware);
 
 // === ROUTES ===
 app.use('/index', indexRouter);

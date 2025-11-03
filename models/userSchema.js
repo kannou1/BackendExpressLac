@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema({
   NumTel: String,
   Adresse: String,
   datedeNaissance: Date,
-  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" }, // ✅ garde seulement celle-là
+  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe" },
   dateInscription: Date,
 
   // Enseignant
@@ -38,7 +38,7 @@ const userSchema = new mongoose.Schema({
   adminCode: String,
 
   // Relations
-  classes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Classe" }], // pour enseignant
+  classes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Classe" }],
   coursEnseignes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cours" }],
   notes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Note" }],
   presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }],
@@ -53,7 +53,9 @@ const userSchema = new mongoose.Schema({
   resetCodeExpires: Date,
 }, { timestamps: true });
 
-// Hash password before saving
+/* ===========================================================
+   🧂 Hash password before saving
+=========================================================== */
 userSchema.pre('save', async function(next) {
   try {
     if (!this.isModified('password')) return next();
@@ -66,16 +68,33 @@ userSchema.pre('save', async function(next) {
   }
 });
 
-// Compare password
+/* ===========================================================
+   🔐 Compare password method (for instance)
+=========================================================== */
 userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// Log creation
-userSchema.post('save', function(doc, next) {
-  console.log('New user created: ', doc.email);
-  next();
-});
+/* ===========================================================
+   🔑 Static login method
+=========================================================== */
+userSchema.statics.login = async function(email, password) {
+  const user = await this.findOne({ email });
+  if (!user) {
+    throw Error('incorrect email');
+  }
+
+  const auth = await bcrypt.compare(password, user.password);
+  if (!auth) {
+    throw Error('incorrect password');
+  }
+
+  
+
+  return user;
+};
+
+
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;

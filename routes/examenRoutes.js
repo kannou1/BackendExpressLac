@@ -1,18 +1,22 @@
 const express = require("express");
 const router = express.Router();
 const examController = require("../controllers/examenController");
+const { requireAuthUser } = require("../middlewares/authMiddlewares");
+const { ControledAcces } = require("../middlewares/AccessControllers");
 
-// ---------- CREATE ----------
-router.post("/create", examController.createExamen);
+// ➕ Créer un examen
+router.post("/create", requireAuthUser, ControledAcces("admin", "enseignant"), examController.createExamen);
 
-// ---------- READ ----------
-router.get("/getAll", examController.getAllExamens);
-router.get("/getById/:id", examController.getExamenById);
+// 🔍 Récupérer tous les examens
+router.get("/getAll", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), examController.getAllExamens);
 
-// ---------- UPDATE ----------
-router.put("/update/:id", examController.updateExamen);
+// 🔍 Récupérer un examen par ID
+router.get("/getById/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), examController.getExamenById);
 
-// ---------- DELETE ----------
-router.delete("/delete/:id", examController.deleteExamen);
+// ✏️ Mettre à jour un examen
+router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant"), examController.updateExamen);
+
+// ❌ Supprimer un examen
+router.delete("/delete/:id", requireAuthUser, ControledAcces("admin", "enseignant"), examController.deleteExamen);
 
 module.exports = router;

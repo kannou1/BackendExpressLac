@@ -1,37 +1,32 @@
-var express = require('express');
-var router = express.Router();
-const userController = require('../controllers/userController');
-const uploadfile = require('../middlewares/uploadfile');
-const { forgotPassword, resetPassword } = require('../controllers/authController');
+const express = require("express");
+const router = express.Router();
+const userController = require("../controllers/userController");
+const uploadfile = require("../middlewares/uploadfile");
+const { forgotPassword, resetPassword } = require("../controllers/authController");
+const { requireAuthUser } = require("../middlewares/authMiddlewares");
+const { ControledAcces } = require("../middlewares/AccessControllers");
 
+router.post("/create-admin", requireAuthUser, ControledAcces("admin"), uploadfile.single("image_User"), userController.createAdmin);
+router.post("/create-enseignant", requireAuthUser, ControledAcces("admin"), uploadfile.single("image_User"), userController.createEnseignant);
+router.post("/create-etudiant", requireAuthUser, ControledAcces("admin", "enseignant"), uploadfile.single("image_User"), userController.createEtudiant);
 
+router.get("/getAllUsers", requireAuthUser, ControledAcces("admin"), userController.getAllUsers);
+router.get("/admins", requireAuthUser, ControledAcces("admin"), userController.getAdmins);
+router.get("/enseignants", requireAuthUser, ControledAcces("admin", "enseignant"), userController.getEnseignants);
+router.get("/etudiants", requireAuthUser, ControledAcces("admin", "enseignant"), userController.getEtudiants);
+router.get("/getUserById/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), userController.getUserById);
 
+router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), uploadfile.single("image_User"), userController.updateUserById);
+router.put("/update-password/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), userController.updatePassword);
 
+router.delete("/deleteAllUsers", requireAuthUser, ControledAcces("admin"), userController.deleteAllUsers);
+router.delete("/delete/:id", requireAuthUser, ControledAcces("admin"), userController.deleteUserById);
 
-//  CREATE avec upload d'image
-router.post("/create-admin", uploadfile.single("image_User"), userController.createAdmin);
-router.post("/create-enseignant", uploadfile.single("image_User"), userController.createEnseignant);
-router.post("/create-etudiant", uploadfile.single("image_User"), userController.createEtudiant);
+router.post("/login", userController.login);
+router.get("/logout", requireAuthUser, userController.logout);
+router.get("/me", requireAuthUser, userController.getUserAuth);
 
-//  READ
-router.get("/getAllUsers", userController.getAllUsers);
-router.get("/admins", userController.getAdmins);
-router.get("/enseignants", userController.getEnseignants);
-router.get("/etudiants", userController.getEtudiants);
-router.get("/getUserById/:id", userController.getUserById);
-
-//  UPDATE
-router.put("/update/:id", userController.updateUserById);
-router.put("/update-password/:id", userController.updatePassword);
-
-//  DELETE
-router.delete("/deleteAllUsers", userController.deleteAllUsers);
-router.delete("/delete/:id", userController.deleteUserById);
-// Forgot password
-router.post('/forgot-password', forgotPassword);
-
-// Reset password
-router.post('/reset-password/', resetPassword);
-
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 module.exports = router;

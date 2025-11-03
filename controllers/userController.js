@@ -13,9 +13,7 @@ const Presence = require("../models/presenceSchema");
 const Demande = require("../models/demandeSchema");
 const Message = require("../models/messageSchema");
 const Notification = require("../models/notificationSchema");
-// ⚠️ Vérifie que StageRequest existe sinon commente la ligne
-// const StageRequest = require("../models/stageRequestSchema");
-
+const jwt = require("jsonwebtoken");
 /* ===========================================================
    🔹 CREATE USERS
 =========================================================== */
@@ -400,6 +398,90 @@ module.exports.deleteAllUsers = async (req, res) => {
     res.status(200).json({ message: "Tous les utilisateurs ont été supprimés ✅" });
   } catch (error) {
     console.error("❌ Erreur deleteAllUsers:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+// ===========================================================
+// 🔑 AUTHENTIFICATION (LOGIN / LOGOUT / GET AUTH)
+// ===========================================================
+
+const maxAge = 1 * 60 * 60; // 1h en secondes
+
+const createToken = (id) => {
+  return jwt.sign({ id },  process.env.JWT_SECRET, { expiresIn: maxAge });
+};
+
+// ------------------- LOGIN -------------------
+module.exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password)
+      return res.status(400).json({ message: "Email et mot de passe requis." });
+
+    // Utilise la méthode statique définie dans le schéma
+    const user = await userModel.login(email, password);
+
+    
+
+    const token = createToken(user._id);
+
+    res.cookie("jwt", token, {
+      httpOnly: true,
+      maxAge: maxAge * 1000,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+    });
+
+    res.status(200).json({
+      message: "Connexion réussie ✅",
+      user: {
+        _id: user._id,
+        nom: user.nom,
+        prenom: user.prenom,
+        email: user.email,
+        role: user.role,
+        image_User: user.image_User,
+      },
+      token,
+    });
+  } catch (error) {
+    console.error("❌ Erreur login:", error.message);
+    res.status(401).json({ message: error.message });
+  }
+};
+
+// ------------------- GET USER AUTH -------------------
+module.exports.getUserAuth = async (req, res) => {
+  try {
+    // L’id doit venir du middleware JWT (ex: req.user.id)
+    const id = req.user?._id || req.user?.id;
+
+    if (!id) return res.status(401).json({ message: "Utilisateur non authentifié" });
+
+    const user = await userModel
+      .findById(id)
+      .select("-password")
+      .populate("classe", "nom annee specialisation anneeAcademique")
+      .populate("classes", "nom annee specialisation anneeAcademique")
+      .populate("coursEnseignes", "nom code credits semestre");
+
+    if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("❌ Erreur getUserAuth:", error.message);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+// ------------------- LOGOUT -------------------
+module.exports.logout = (req, res) => {
+  try {
+    res.clearCookie("jwt");
+    res.status(200).json({ message: "Déconnexion réussie ✅" });
+  } catch (error) {
+    console.error("❌ Erreur logout:", error.message);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
