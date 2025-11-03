@@ -63,12 +63,30 @@ module.exports.getAllNotifications = async (req, res) => {
 module.exports.getNotificationsByUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const notifications = await Notification.find({ utilisateur: userId })
+
+    // Populate sender and receiver to get full info
+    const notifications = await Notification.find({ receiver: userId })
+      .populate({
+        path: "sender",
+        select: "prenom nom email role", // customize fields you want
+      })
+      .populate({
+        path: "receiver",
+        select: "prenom nom email role", // same for receiver
+      })
       .sort({ createdAt: -1 });
+
+    if (!notifications || notifications.length === 0) {
+      return res.status(200).json([]);
+    }
 
     res.status(200).json(notifications);
   } catch (error) {
-    res.status(500).json({ message: "Erreur serveur", error: error.message });
+    console.error("Erreur getNotificationsByUser:", error);
+    res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message,
+    });
   }
 };
 
@@ -102,6 +120,34 @@ module.exports.deleteNotification = async (req, res) => {
 
     res.status(200).json({ message: "Notification supprimée ✅" });
   } catch (error) {
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+/* ===========================================================
+   🧹 DELETE ALL NOTIFICATIONS OF A USER
+=========================================================== */
+module.exports.deleteAllNotificationsOfUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // 🔍 Vérifier si l'utilisateur existe
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur introuvable." });
+    }
+
+    // 🔹 Supprimer toutes les notifications associées à cet utilisateur
+    const result = await Notification.deleteMany({ utilisateur: userId });
+
+    // 🔹 Vider la liste des notifications de l'utilisateur
+    await User.findByIdAndUpdate(userId, { $set: { notifications: [] } });
+
+    res.status(200).json({
+      message: `Toutes les notifications de l'utilisateur "${user.nom} ${user.prenom}" ont été supprimées ✅`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error("❌ Erreur deleteAllNotificationsOfUser:", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };

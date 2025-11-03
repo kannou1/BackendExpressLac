@@ -2,19 +2,26 @@ const express = require("express");
 const router = express.Router();
 const notificationController = require("../controllers/notificationController");
 
-// ➕ Créer une notification
-router.post("/create", notificationController.createNotification);
+/* ===========================================================
+   🔔 ROUTES NOTIFICATIONS
+=========================================================== */
 
-// 🔍 Toutes les notifications
-router.get("/getAll", notificationController.getAllNotifications);
+// 🟢 Créer une notification
+router.post("/", notificationController.createNotification);
 
-// 🔍 Notifications d’un utilisateur
+// 🔍 Récupérer toutes les notifications
+router.get("/", notificationController.getAllNotifications);
+
+// 🔍 Récupérer les notifications d’un utilisateur
 router.get("/user/:userId", notificationController.getNotificationsByUser);
 
-// ✏️ Marquer comme lue
-router.put("/read/:id", notificationController.markAsRead);
+// ✏️ Marquer une notification comme lue
+router.put("/:id/read", notificationController.markAsRead);
 
 // ❌ Supprimer une notification
-router.delete("/delete/:id", notificationController.deleteNotification);
+router.delete("/:id", notificationController.deleteNotification);
+
+// 🧹 Supprimer toutes les notifications d’un utilisateur
+router.delete("/user/:userId", notificationController.deleteAllNotificationsOfUser);
 
 module.exports = router;
