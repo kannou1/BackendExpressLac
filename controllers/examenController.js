@@ -106,12 +106,38 @@ module.exports.deleteExamen = async (req, res) => {
 /* ===========================================================
    🔍 GET ALL EXAMS
 =========================================================== */
-module.exports.getAllExamens = async (_, res) => {
+module.exports.getAllExamens = async (req, res) => {
   try {
-    const examens = await Examen.find()
-      .populate("coursId", "nom code")
-      .populate("enseignantId", "nom prenom email")
-      .populate("classeId", "nom annee specialisation");
+    let examens;
+
+    // Si c’est un étudiant, on filtre par sa classe
+    if (req.user.role === "etudiant") {
+      const user = await User.findById(req.user.id).populate("classe");
+      if (!user || !user.classe) {
+        return res.status(404).json({ message: "Classe de l'étudiant introuvable." });
+      }
+
+      examens = await Examen.find({ classeId: user.classe._id })
+        .populate("coursId", "nom code")
+        .populate("enseignantId", "nom prenom email")
+        .populate("classeId", "nom annee specialisation");
+    }
+
+    // Si c’est un enseignant → tous les examens qu’il a créés
+    else if (req.user.role === "enseignant") {
+      examens = await Examen.find({ enseignantId: req.user.id })
+        .populate("coursId", "nom code")
+        .populate("classeId", "nom annee specialisation");
+    }
+
+    // Si c’est un admin → tous les examens
+    else {
+      examens = await Examen.find()
+        .populate("coursId", "nom code")
+        .populate("enseignantId", "nom prenom email")
+        .populate("classeId", "nom annee specialisation");
+    }
+
     res.status(200).json(examens);
   } catch (error) {
     console.error("❌ Erreur getAllExamens:", error);
