@@ -4,7 +4,7 @@ const Cours = require("../models/coursSchema");
 const Notification = require("../models/notificationSchema"); // <-- AJOUTÉ
 
 /* ===========================================================
-   🟢 CREATE PRESENCE
+  CREATE PRESENCE
 =========================================================== */
 module.exports.createPresence = async (req, res) => {
   try {
@@ -33,7 +33,7 @@ module.exports.createPresence = async (req, res) => {
       }
     }
 
-    // ✅ Créer la présence
+  // Créer la présence
     const newPresence = new Presence({
       date,
       statut,
@@ -44,22 +44,22 @@ module.exports.createPresence = async (req, res) => {
 
     await newPresence.save();
 
-    // 🔗 Ajouter les références
+  // Ajouter les références
     await Promise.all([
       User.findByIdAndUpdate(etudiant, { $addToSet: { presences: newPresence._id } }),
       Cours.findByIdAndUpdate(cours, { $addToSet: { presences: newPresence._id } }),
     ]);
 
-    /* ===========================================================
-       ⚠️ Vérifier le nombre d’absences de l’étudiant dans ce cours
-    ============================================================ */
+   /* ===========================================================
+     Vérifier le nombre d’absences de l’étudiant dans ce cours
+   =========================================================== */
     if (statut === "absent") {
       const absences = await Presence.countDocuments({ etudiant, cours, statut: "absent" });
 
       if (absences === 2) {
         const message = `⚠️ Vous avez 2 absences dans le cours "${coursData.nom}". Une autre absence pourrait entraîner votre élimination.`;
 
-        // ✅ Créer une notification
+  // Créer une notification
         const notif = await Notification.create({
           message,
           type: "avertissement",
@@ -69,7 +69,7 @@ module.exports.createPresence = async (req, res) => {
         // L’ajouter dans les notifications de l’utilisateur
         await User.findByIdAndUpdate(etudiant, { $push: { notifications: notif._id } });
 
-        // ⚡ Envoi en temps réel si Socket.IO dispo
+  // Envoi en temps réel si Socket.IO dispo
         if (req.io) {
           req.io.to(etudiant.toString()).emit("receiveNotification", {
             message,
@@ -90,7 +90,7 @@ module.exports.createPresence = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET ALL PRESENCES
+  GET ALL PRESENCES
 =========================================================== */
 module.exports.getAllPresence = async (_, res) => {
   try {
@@ -107,7 +107,7 @@ module.exports.getAllPresence = async (_, res) => {
 };
 
 /* ===========================================================
-   🔍 GET PRESENCE BY ID
+  GET PRESENCE BY ID
 =========================================================== */
 module.exports.getPresenceById = async (req, res) => {
   try {
@@ -125,7 +125,7 @@ module.exports.getPresenceById = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET PRESENCES BY ETUDIANT
+  GET PRESENCES BY ETUDIANT
 =========================================================== */
 module.exports.getPresenceByEtudiant = async (req, res) => {
   try {
@@ -142,7 +142,7 @@ module.exports.getPresenceByEtudiant = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET PRESENCES BY ENSEIGNANT
+  GET PRESENCES BY ENSEIGNANT
 =========================================================== */
 module.exports.getPresenceByEnseignant = async (req, res) => {
   try {
@@ -159,7 +159,7 @@ module.exports.getPresenceByEnseignant = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET PRESENCES BY COURS
+  GET PRESENCES BY COURS
 =========================================================== */
 module.exports.getPresenceByCours = async (req, res) => {
   try {
@@ -176,7 +176,7 @@ module.exports.getPresenceByCours = async (req, res) => {
   }
 };
 /* ===========================================================
-   📊 CALCUL DU TAUX DE PRÉSENCE
+  CALCUL DU TAUX DE PRÉSENCE
 =========================================================== */
 module.exports.getTauxPresence = async (req, res) => {
   try {
@@ -213,7 +213,7 @@ module.exports.getTauxPresence = async (req, res) => {
   }
 };
 
-// 📊 Taux de présence par cours
+// Taux de présence par cours
 module.exports.getTauxPresenceParCours = async (req, res) => {
   try {
     const { coursId } = req.params;
@@ -250,7 +250,7 @@ module.exports.getTauxPresenceParCours = async (req, res) => {
 
 
 /* ===========================================================
-   ✏️ UPDATE PRESENCE
+  UPDATE PRESENCE
 =========================================================== */
 module.exports.updatePresence = async (req, res) => {
   try {
@@ -265,7 +265,7 @@ module.exports.updatePresence = async (req, res) => {
 };
 
 /* ===========================================================
-   ❌ DELETE PRESENCE
+  DELETE PRESENCE
 =========================================================== */
 module.exports.deletePresence = async (req, res) => {
   try {
@@ -285,7 +285,7 @@ module.exports.deletePresence = async (req, res) => {
 };
 
 /* ===========================================================
-   ⚠️ DELETE ALL PRESENCES
+  DELETE ALL PRESENCES
 =========================================================== */
 module.exports.deleteAllPresence = async (req, res) => {
   try {

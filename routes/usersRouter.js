@@ -10,7 +10,7 @@ router.post("/create-admin", requireAuthUser, ControledAcces("admin"), uploadfil
 router.post("/create-enseignant", requireAuthUser, ControledAcces("admin"), uploadfile.single("image_User"), userController.createEnseignant);
 router.post("/create-etudiant", requireAuthUser, ControledAcces("admin", "enseignant"), uploadfile.single("image_User"), userController.createEtudiant);
 
-router.get("/getAllUsers", requireAuthUser, ControledAcces("admin"), userController.getAllUsers);
+router.get("/getAllUsers", requireAuthUser, ControledAcces("admin", "etudiant"), userController.getAllUsers);
 router.get("/admins", requireAuthUser, ControledAcces("admin"), userController.getAdmins);
 router.get("/enseignants", requireAuthUser, ControledAcces("admin", "enseignant"), userController.getEnseignants);
 router.get("/etudiants", requireAuthUser, ControledAcces("admin", "enseignant"), userController.getEtudiants);

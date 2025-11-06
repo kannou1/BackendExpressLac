@@ -2,7 +2,7 @@ const Notification = require("../models/notificationSchema");
 const User = require("../models/userSchema");
 
 /* ===========================================================
-   🟢 CREATE NOTIFICATION (et envoi temps réel via socket.io)
+  CREATE NOTIFICATION (et envoi temps réel via socket.io)
 =========================================================== */
 module.exports.createNotification = async (req, res) => {
   try {
@@ -18,7 +18,7 @@ module.exports.createNotification = async (req, res) => {
       return res.status(404).json({ message: "Utilisateur introuvable." });
     }
 
-    // ✅ Créer la notification
+    // Créer la notification
     const notif = new Notification({
       message,
       type,
@@ -44,7 +44,7 @@ module.exports.createNotification = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET ALL NOTIFICATIONS
+  GET ALL NOTIFICATIONS
 =========================================================== */
 module.exports.getAllNotifications = async (req, res) => {
   try {
@@ -58,7 +58,7 @@ module.exports.getAllNotifications = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET NOTIFICATIONS BY USER
+  GET NOTIFICATIONS BY USER
 =========================================================== */
 module.exports.getNotificationsByUser = async (req, res) => {
   try {
@@ -91,7 +91,7 @@ module.exports.getNotificationsByUser = async (req, res) => {
 };
 
 /* ===========================================================
-   ✏️ MARK AS READ
+  MARK AS READ
 =========================================================== */
 module.exports.markAsRead = async (req, res) => {
   try {
@@ -109,7 +109,7 @@ module.exports.markAsRead = async (req, res) => {
 };
 
 /* ===========================================================
-   ❌ DELETE NOTIFICATION
+  DELETE NOTIFICATION
 =========================================================== */
 module.exports.deleteNotification = async (req, res) => {
   try {
@@ -124,7 +124,7 @@ module.exports.deleteNotification = async (req, res) => {
   }
 };
 /* ===========================================================
-   🧹 DELETE ALL NOTIFICATIONS OF A USER
+  DELETE ALL NOTIFICATIONS OF A USER
 =========================================================== */
 module.exports.deleteAllNotificationsOfUser = async (req, res) => {
   try {
@@ -136,10 +136,10 @@ module.exports.deleteAllNotificationsOfUser = async (req, res) => {
       return res.status(404).json({ message: "Utilisateur introuvable." });
     }
 
-    // 🔹 Supprimer toutes les notifications associées à cet utilisateur
+    //  Supprimer toutes les notifications associées à cet utilisateur
     const result = await Notification.deleteMany({ utilisateur: userId });
 
-    // 🔹 Vider la liste des notifications de l'utilisateur
+    //  Vider la liste des notifications de l'utilisateur
     await User.findByIdAndUpdate(userId, { $set: { notifications: [] } });
 
     res.status(200).json({

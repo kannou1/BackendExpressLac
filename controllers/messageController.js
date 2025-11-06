@@ -5,7 +5,7 @@ const path = require("path");
 const fs = require("fs");
 
 /* ===========================================================
-   🟢 CREATE MESSAGE (texte ou image) + Notification temps réel
+  CREATE MESSAGE (texte ou image) + Notification temps réel
 =========================================================== */
 module.exports.sendMessage = async (req, res) => {
   try {
@@ -45,7 +45,7 @@ module.exports.sendMessage = async (req, res) => {
       User.findByIdAndUpdate(receiverId, { $push: { messages: newMessage._id } }),
     ]);
 
-    // 🔔 Créer notification dans MongoDB
+  // Créer notification dans MongoDB
     const notification = await Notification.create({
       message: `💬 Nouveau message de ${sender.prenom} ${sender.nom}`,
       type: "alerte",
@@ -57,7 +57,7 @@ module.exports.sendMessage = async (req, res) => {
       $push: { notifications: notification._id },
     });
 
-    // ⚡ Envoi en temps réel via Socket.IO
+  // Envoi en temps réel via Socket.IO
     const io = req.io;
     if (io) {
       io.to(receiverId.toString()).emit("receiveNotification", {
@@ -80,7 +80,7 @@ module.exports.sendMessage = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET ALL MESSAGES (admin)
+  GET ALL MESSAGES (admin)
 =========================================================== */
 module.exports.getAllMessages = async (_, res) => {
   try {
@@ -97,7 +97,7 @@ module.exports.getAllMessages = async (_, res) => {
 };
 
 /* ===========================================================
-   💬 GET CHAT BETWEEN TWO USERS
+  GET CHAT BETWEEN TWO USERS
 =========================================================== */
 module.exports.getConversation = async (req, res) => {
   try {
@@ -127,7 +127,7 @@ module.exports.getConversation = async (req, res) => {
 };
 
 /* ===========================================================
-   ✏️ UPDATE MESSAGE
+  UPDATE MESSAGE
 =========================================================== */
 module.exports.updateMessage = async (req, res) => {
   try {
@@ -158,7 +158,7 @@ module.exports.deleteMessage = async (req, res) => {
       User.updateMany({}, { $pull: { messages: message._id } }),
     ]);
 
-    // 🖼️ Supprimer l'image si elle existe
+  // Supprimer l'image si elle existe
     if (message.image) {
       const filePath = path.join(__dirname, "..", "public", "images", message.image);
       if (fs.existsSync(filePath)) {
@@ -174,7 +174,7 @@ module.exports.deleteMessage = async (req, res) => {
 };
 
 /* ===========================================================
-   ⚠️ DELETE ALL MESSAGES
+  DELETE ALL MESSAGES
 =========================================================== */
 module.exports.deleteAllMessages = async (req, res) => {
   try {

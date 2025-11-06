@@ -4,7 +4,7 @@ const Examen = require("../models/examenSchema");
 const Notification = require("../models/notificationSchema");
 
 /* ===========================================================
-   🧠 FONCTION UTILITAIRE : envoyer une notification
+  FONCTION UTILITAIRE : envoyer une notification
 =========================================================== */
 async function sendNotification(io, userId, message, type = "note") {
   if (!userId) return;
@@ -33,7 +33,7 @@ async function sendNotification(io, userId, message, type = "note") {
 }
 
 /* ===========================================================
-   🟢 CREATE NOTE
+  CREATE NOTE
 =========================================================== */
 module.exports.createNote = async (req, res) => {
   try {
@@ -62,7 +62,7 @@ module.exports.createNote = async (req, res) => {
       Examen.findByIdAndUpdate(examen, { $addToSet: { notes: newNote._id } }),
     ]);
 
-    // 🔔 Notification : création
+  // Notification : création
     await sendNotification(
       io,
       etudiant,
@@ -78,7 +78,7 @@ module.exports.createNote = async (req, res) => {
 };
 
 /* ===========================================================
-   ✏️ UPDATE NOTE
+  UPDATE NOTE
 =========================================================== */
 module.exports.updateNote = async (req, res) => {
   try {
@@ -89,7 +89,7 @@ module.exports.updateNote = async (req, res) => {
 
     if (!updated) return res.status(404).json({ message: "Note introuvable." });
 
-    // 🔔 Notification : mise à jour
+  // Notification : mise à jour
     await sendNotification(
       io,
       updated.etudiant._id,
@@ -105,7 +105,7 @@ module.exports.updateNote = async (req, res) => {
 };
 
 /* ===========================================================
-   ❌ DELETE NOTE
+  DELETE NOTE
 =========================================================== */
 module.exports.deleteNote = async (req, res) => {
   try {
@@ -121,7 +121,7 @@ module.exports.deleteNote = async (req, res) => {
       Examen.updateMany({}, { $pull: { notes: deleted._id } }),
     ]);
 
-    // 🔔 Notification : suppression
+  // Notification : suppression
     await sendNotification(
       io,
       deleted.etudiant._id,
@@ -137,7 +137,7 @@ module.exports.deleteNote = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET ALL + BY ID (inchangés)
+  GET ALL + BY ID (inchangés)
 =========================================================== */
 module.exports.getAllNotes = async (_, res) => {
   try {

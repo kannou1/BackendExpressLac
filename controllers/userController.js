@@ -15,10 +15,10 @@ const Message = require("../models/messageSchema");
 const Notification = require("../models/notificationSchema");
 const jwt = require("jsonwebtoken");
 /* ===========================================================
-   🔹 CREATE USERS
+  CREATE USERS
 =========================================================== */
 
-// 🧱 Admin
+// Admin
 module.exports.createAdmin = async (req, res) => {
   try {
     const userData = { ...req.body, role: "admin" };
@@ -34,7 +34,7 @@ module.exports.createAdmin = async (req, res) => {
   }
 };
 
-// 👨‍🏫 Enseignant
+// Enseignant
 module.exports.createEnseignant = async (req, res) => {
   try {
     const userData = { ...req.body, role: "enseignant" };
@@ -79,7 +79,7 @@ module.exports.createEnseignant = async (req, res) => {
   }
 };
 
-// 🎓 Étudiant
+// Étudiant
 module.exports.createEtudiant = async (req, res) => {
   try {
     const userData = { ...req.body, role: "etudiant" };
@@ -117,10 +117,10 @@ module.exports.createEtudiant = async (req, res) => {
 };
 
 /* ===========================================================
-   🔍 GET USERS
+  GET USERS
 =========================================================== */
 
-// 🧾 Tous les utilisateurs
+// Tous les utilisateurs
 module.exports.getAllUsers = async (req, res) => {
   try {
     const users = await userModel.find().select("-password");
@@ -166,7 +166,7 @@ module.exports.getAllUsers = async (req, res) => {
   }
 };
 
-// 👨‍💼 Admins
+// Admins
 module.exports.getAdmins = async (_, res) => {
   try {
     const admins = await userModel.find({ role: "admin" }).select("prenom nom email role image_User createdAt");
@@ -177,7 +177,7 @@ module.exports.getAdmins = async (_, res) => {
   }
 };
 
-// 👨‍🏫 Enseignants
+// Enseignants
 module.exports.getEnseignants = async (_, res) => {
   try {
     const enseignants = await userModel
@@ -198,7 +198,7 @@ module.exports.getEnseignants = async (_, res) => {
   }
 };
 
-// 🎓 Étudiants
+// Étudiants
 module.exports.getEtudiants = async (_, res) => {
   try {
     const etudiants = await userModel
@@ -220,7 +220,7 @@ module.exports.getEtudiants = async (_, res) => {
   }
 };
 
-// 🔍 User par ID
+// User par ID
 module.exports.getUserById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -252,7 +252,7 @@ module.exports.getUserById = async (req, res) => {
 };
 
 /* ===========================================================
-   ✏️ UPDATE & DELETE
+  UPDATE & DELETE
 =========================================================== */
 
 // ------------------- UPDATE USER -------------------
@@ -269,13 +269,13 @@ module.exports.updateUserById = async (req, res) => {
       updateData.image_User = req.file.filename;
     }
 
-    // 🔁 Gestion classe (étudiant)
+  // Gestion classe (étudiant)
     if (user.role === "etudiant" && updateData.classe && updateData.classe !== user.classe?.toString()) {
       if (user.classe) await classeModel.updateOne({ _id: user.classe }, { $pull: { etudiants: id } });
       await classeModel.updateOne({ _id: updateData.classe }, { $addToSet: { etudiants: id } });
     }
 
-    // 🔁 Gestion classes (enseignant)
+  // Gestion classes (enseignant)
     if (user.role === "enseignant" && updateData.classes) {
       const oldClasses = user.classes.map((c) => c.toString());
       const newClasses = updateData.classes;
@@ -313,7 +313,7 @@ module.exports.updatePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-    // ✅ Email notification
+  // Email notification
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -402,7 +402,7 @@ module.exports.deleteAllUsers = async (req, res) => {
   }
 };
 // ===========================================================
-// 🔑 AUTHENTIFICATION (LOGIN / LOGOUT / GET AUTH)
+// AUTHENTIFICATION (LOGIN / LOGOUT / GET AUTH)
 // ===========================================================
 
 const maxAge = 1 * 60 * 60; // 1h en secondes
