@@ -61,22 +61,58 @@ module.exports.createCours = async (req, res) => {
 };
 
 // ------------------- GET ALL -------------------
+
 module.exports.getAllCours = async (req, res) => {
   try {
-    const cours = await Cours.find()
-      .populate("classe", "nom annee specialisation anneeAcademique")
-      .populate("enseignant", "prenom nom email specialite")
-      .populate({
-        path: "examens",
-        populate: { path: "notes", select: "valeur etudiant" },
-      })
-      .populate("presences", "date statut etudiant")
-      .populate("emplois", "jour heureDebut heureFin salle");
+    let cours = [];
+
+    // Si c’est un étudiant : afficher les cours de sa classe
+    if (req.user.role === "etudiant") {
+      const etudiant = await User.findById(req.user.id).populate("classe", "_id nom");
+      if (!etudiant || !etudiant.classe) {
+        return res.status(404).json({ message: "Classe de l’étudiant introuvable." });
+      }
+
+      cours = await Cours.find({ classe: etudiant.classe._id })
+        .populate("classe", "nom annee specialisation anneeAcademique")
+        .populate("enseignant", "prenom nom email specialite")
+        .populate({
+          path: "examens",
+          populate: { path: "notes", select: "valeur etudiant" },
+        })
+        .populate("presences", "date statut etudiant")
+        .populate("emplois", "jour heureDebut heureFin salle");
+
+    }
+    // Si c’est un enseignant : afficher uniquement les cours qu’il enseigne
+    else if (req.user.role === "enseignant") {
+      cours = await Cours.find({ enseignant: req.user.id })
+        .populate("classe", "nom annee specialisation anneeAcademique")
+        .populate("enseignant", "prenom nom email specialite")
+        .populate({
+          path: "examens",
+          populate: { path: "notes", select: "valeur etudiant" },
+        })
+        .populate("presences", "date statut etudiant")
+        .populate("emplois", "jour heureDebut heureFin salle");
+    }
+    // Si c’est un admin : afficher tous les cours
+    else {
+      cours = await Cours.find()
+        .populate("classe", "nom annee specialisation anneeAcademique")
+        .populate("enseignant", "prenom nom email specialite")
+        .populate({
+          path: "examens",
+          populate: { path: "notes", select: "valeur etudiant" },
+        })
+        .populate("presences", "date statut etudiant")
+        .populate("emplois", "jour heureDebut heureFin salle");
+    }
 
     res.status(200).json(cours);
   } catch (error) {
     console.error("❌ Erreur getAllCours:", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
