@@ -120,7 +120,7 @@ module.exports.createEtudiant = async (req, res) => {
   GET USERS
 =========================================================== */
 
-// Tous les utilisateurs
+// ✅ Updated getAllUsers (consistent format)
 module.exports.getAllUsers = async (req, res) => {
   try {
     const users = await userModel.find().select("-password");
@@ -158,11 +158,19 @@ module.exports.getAllUsers = async (req, res) => {
       })
     );
 
-    res.status(200).json(cleanUsers);
+    res.status(200).json({
+      success: true,
+      data: {
+        userList: cleanUsers
+      }
+    });
   } catch (error) {
     console.error("❌ Erreur getAllUsers:", error.message);
-    console.error(error.stack);
-    res.status(500).json({ message: "Erreur serveur", error: error.message });
+    res.status(500).json({ 
+      success: false,
+      message: "Erreur serveur", 
+      error: error.message 
+    });
   }
 };
 

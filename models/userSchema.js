@@ -17,8 +17,8 @@ const userSchema = new mongoose.Schema({
     required: true,
     match: [/(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{8,}/, 'Mot de passe faible']
   },
-  role: { type: String, enum: ["etudiant", "enseignant", "admin"], default: "etudiant" },
-  image_User: { type: String, default: 'client.png' },
+  role: { type: String, enum: ["etudiant", "enseignant", "admin"], default: "etudiant" ,required: true },
+  image_User:  String ,
   verified: { type: Boolean, default: false },
   Status: { type: Boolean, default: false },
 

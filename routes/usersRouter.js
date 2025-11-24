@@ -12,8 +12,8 @@ router.post("/create-etudiant", requireAuthUser, ControledAcces("admin", "enseig
 
 router.get("/getAllUsers", requireAuthUser, ControledAcces("admin", "etudiant"), userController.getAllUsers);
 router.get("/admins", requireAuthUser, ControledAcces("admin"), userController.getAdmins);
-router.get("/enseignants", requireAuthUser, ControledAcces("admin", "enseignant"), userController.getEnseignants);
-router.get("/etudiants", requireAuthUser, ControledAcces("admin", "enseignant"), userController.getEtudiants);
+router.get("/enseignants", requireAuthUser, ControledAcces("admin", "enseignant" ,  "etudiant"), userController.getEnseignants);
+router.get("/etudiants", requireAuthUser, ControledAcces("admin", "enseignant" ,  "etudiant"), userController.getEtudiants);
 router.get("/getUserById/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), userController.getUserById);
 
 router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), uploadfile.single("image_User"), userController.updateUserById);
@@ -23,7 +23,7 @@ router.delete("/deleteAllUsers", requireAuthUser, ControledAcces("admin"), userC
 router.delete("/delete/:id", requireAuthUser, ControledAcces("admin"), userController.deleteUserById);
 
 router.post("/login", userController.login);
-router.get("/logout", requireAuthUser, userController.logout);
+router.post("/logout", requireAuthUser, userController.logout);
 router.get("/me", requireAuthUser, userController.getUserAuth);
 
 router.post("/forgot-password", forgotPassword);

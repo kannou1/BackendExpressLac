@@ -6,6 +6,7 @@ var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors'); // ✅ Add this import
 require('dotenv').config();
 const { connectToMongoDB } = require('./db/db');
 
@@ -26,21 +27,36 @@ const authLogMiddleware = require("./middlewares/authLogMiddleware");
 // === APP EXPRESS ===
 var app = express();
 
+// ✅ CORS Configuration - Must be before other middleware
+app.use(cors({
+  origin: 'http://localhost:8080', // Your frontend URL
+  credentials: true, // Allow cookies and credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
+
+
 
 // === SERVEUR HTTP ===
 const server = http.createServer(app);
 
 // === SOCKET.IO ===
 const io = new Server(server, {
-  cors: { origin: "*", methods: ["GET", "POST"] },
+  cors: { 
+    origin: "http://localhost:8080", // ✅ Update this to match your frontend
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
 });
 
-// ✅ Enregistrer `io` globalement pour que les contrôleurs puissent l’utiliser via `req.app.get("io")`
+// ✅ Enregistrer `io` globalement pour que les contrôleurs puissent l'utiliser via `req.app.get("io")`
 app.set("io", io);
 
 // ✅ Middleware pour rendre `io` accessible directement dans `req`
@@ -55,7 +71,7 @@ app.use(authLogMiddleware);
 // === ROUTES ===
 app.use('/index', indexRouter);
 app.use('/users', usersRouter);
-app.use('/classes', classeRoutes);
+app.use('/classe', classeRoutes);
 app.use('/cours', coursRoutes);
 app.use('/emploi', edtRoutes);
 app.use('/examen', examenRoutes);
