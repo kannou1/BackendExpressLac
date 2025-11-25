@@ -23,15 +23,14 @@ const demandeRoutes = require('./routes/demandeRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const authLogMiddleware = require("./middlewares/authLogMiddleware");
-
-// === APP EXPRESS ===
+const announcementRoutes = require('./routes/announcementRoutes');// === APP EXPRESS ===
 var app = express();
 
 // ✅ CORS Configuration - Must be before other middleware
 app.use(cors({
   origin: 'http://localhost:8080', // Your frontend URL
   credentials: true, // Allow cookies and credentials
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
@@ -80,7 +79,7 @@ app.use('/presence', presenceRoutes);
 app.use('/demande', demandeRoutes);
 app.use('/message', messageRoutes);
 app.use('/notification', notificationRoutes);
-
+app.use('/announcement', announcementRoutes);
 // === ERREURS ===
 app.use((req, res, next) => next(createError(404)));
 app.use((err, req, res, next) => {
