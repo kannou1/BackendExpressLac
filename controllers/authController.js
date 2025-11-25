@@ -2,24 +2,24 @@ const User = require('../models/userSchema');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 
-// 🌐 1. FORGOT PASSWORD — envoi du code sécurisé
+// 1. FORGOT PASSWORD — Send secure code
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "Aucun utilisateur trouvé avec cet email." });
 
-    // 🔑 Génération d’un code de réinitialisation (8 caractères aléatoires)
+    // Generate 8 random characters for reset code
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
     const resetCode = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 
-    // ⏰ Stocker le code + expiration + compteur de tentatives
+    // Store code + expiration + attempt counter
     user.resetCode = resetCode;
-    user.resetCodeExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    user.resetCodeExpires = Date.now() + 10 * 60 * 1000; // valid 10 minutes
     user.resetAttempts = 0;
     await user.save();
 
-    // 📧 Envoi email
+    // Send email
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -52,29 +52,31 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// 🌐 2. RESET PASSWORD — vérification du code et nouveau mot de passe
+// 2. RESET PASSWORD — Check code & change password
 exports.resetPassword = async (req, res) => {
   try {
     const { email, code, newPassword } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: "Utilisateur introuvable." });
 
-    // Vérifier le code
+    // Check code & expiration
     if (!user.resetCode || user.resetCodeExpires < Date.now()) {
       return res.status(400).json({ message: "Le code a expiré ou est invalide." });
     }
 
+    // Limit attempts
     if (user.resetAttempts >= 5) {
       return res.status(429).json({ message: "Trop de tentatives. Veuillez redemander un nouveau code." });
     }
 
+    // Case-insensitive comparison for code
     if (user.resetCode.toUpperCase() !== code.toUpperCase()) {
       user.resetAttempts += 1;
       await user.save();
       return res.status(400).json({ message: "Code incorrect." });
     }
 
-    // Vérifier la sécurité du nouveau mot de passe
+    // Password complexity check (add more rules as needed)
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
@@ -82,16 +84,16 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
-    // ✅ Mettre à jour le mot de passe (hash automatique via pre('save'))
+    // Update password (bcrypt handled in Mongoose pre('save'))
     user.password = newPassword;
 
-    // Nettoyage des champs de reset
+    // Clean up reset fields
     user.resetCode = undefined;
     user.resetCodeExpires = undefined;
     user.resetAttempts = undefined;
     await user.save();
 
-    // 📧 Email de confirmation
+    // Confirmation email
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },

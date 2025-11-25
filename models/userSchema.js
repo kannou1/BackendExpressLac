@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ["etudiant", "enseignant", "admin"], default: "etudiant" ,required: true },
   image_User:  String ,
   verified: { type: Boolean, default: false },
-  Status: { type: Boolean, default: false },
+  Status: { type: String , default: false },
 
   // Étudiant
   NumTel: String,
