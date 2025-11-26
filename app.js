@@ -28,7 +28,7 @@ var app = express();
 
 // ✅ CORS Configuration - Must be before other middleware
 app.use(cors({
-  origin: 'http://localhost:8080', // Your frontend URL
+  origin: 'edunex-portal.netlify.app', // Your frontend URL
   credentials: true, // Allow cookies and credentials
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
