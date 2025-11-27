@@ -13,6 +13,9 @@ router.get("/getAll", requireAuthUser, ControledAcces("admin", "enseignant"), de
 // Récupérer une demande par ID
 router.get("/getById/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), demandeController.getDemandeById);
 
+router.get("/user/:userId", demandeController.getDemandesByUser);
+
+
 // Mettre à jour une demande
 router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant"), demandeController.updateDemande);
 

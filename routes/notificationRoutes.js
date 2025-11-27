@@ -8,7 +8,7 @@ const { ControledAcces } = require("../middlewares/AccessControllers");
 router.post("/", requireAuthUser, ControledAcces("admin", "enseignant"), notificationController.createNotification);
 
 // Récupérer toutes les notifications
-router.get("/", requireAuthUser, ControledAcces("admin"), notificationController.getAllNotifications);
+router.get("/", requireAuthUser, notificationController.getAllNotifications);
 
 // Récupérer les notifications d’un utilisateur
 router.get("/user/:userId", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), notificationController.getNotificationsByUser);
@@ -20,6 +20,6 @@ router.put("/:id/read", requireAuthUser, ControledAcces("admin", "enseignant", "
 router.delete("/:id", requireAuthUser, ControledAcces("admin", "enseignant"), notificationController.deleteNotification);
 
 // Supprimer toutes les notifications d’un utilisateur
-router.delete("/user/:userId", requireAuthUser, ControledAcces("admin"), notificationController.deleteAllNotificationsOfUser);
+router.delete("/user/:userId", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), notificationController.deleteAllNotificationsOfUser);
 
 module.exports = router;

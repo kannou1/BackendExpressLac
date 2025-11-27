@@ -85,6 +85,29 @@ module.exports.getAllDemandes = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
+/* ===========================================================
+   🔵 GET ALL DEMANDES D’UN UTILISATEUR (ÉTUDIANT)
+=========================================================== */
+module.exports.getDemandesByUser = async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Vérifier si l'utilisateur existe
+    const user = await User.findById(userId);
+    if (!user || user.role !== "etudiant") {
+      return res.status(404).json({ message: "Étudiant introuvable." });
+    }
+
+    // Récupérer toutes les demandes de l'étudiant
+    const demandes = await Demande.find({ etudiant: userId })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json(demandes);
+  } catch (error) {
+    console.error("❌ Erreur getDemandesByUser:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
 
 /* ===========================================================
    🔍 GET DEMANDE BY ID

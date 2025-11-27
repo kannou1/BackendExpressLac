@@ -9,31 +9,32 @@ module.exports.createNotification = async (req, res) => {
     const { message, type, utilisateur } = req.body;
 
     if (!message || !type || !utilisateur) {
-      return res.status(400).json({ message: "Tous les champs sont obligatoires." });
+      return res
+        .status(400)
+        .json({ message: "Tous les champs sont obligatoires." });
     }
 
-    // Vérifie que l'utilisateur existe
     const user = await User.findById(utilisateur);
     if (!user) {
       return res.status(404).json({ message: "Utilisateur introuvable." });
     }
 
-    // Créer la notification
     const notif = new Notification({
       message,
       type,
-      utilisateur,
+      utilisateur, // ObjectId de l'utilisateur
     });
 
     await notif.save();
 
-    // 🔗 Ajouter la référence dans le User
-    await User.findByIdAndUpdate(utilisateur, { $push: { notifications: notif._id } });
+    await User.findByIdAndUpdate(utilisateur, {
+      $push: { notifications: notif._id },
+    });
 
-    // ⚡ Envoi temps réel via Socket.IO
+    // Socket.IO
     const io = req.app.get("io");
     if (io) {
-      io.to(utilisateur).emit("receiveNotification", notif);
+      io.to(utilisateur.toString()).emit("receiveNotification", notif);
     }
 
     res.status(201).json({ message: "Notification envoyée ✅", notif });
@@ -63,24 +64,10 @@ module.exports.getAllNotifications = async (req, res) => {
 module.exports.getNotificationsByUser = async (req, res) => {
   try {
     const { userId } = req.params;
-
-    // Populate sender and receiver to get full info
-    const notifications = await Notification.find({ receiver: userId })
-      .populate({
-        path: "sender",
-        select: "prenom nom email role", // customize fields you want
-      })
-      .populate({
-        path: "receiver",
-        select: "prenom nom email role", // same for receiver
-      })
+    const notifications = await Notification.find({ utilisateur: userId })
+      .populate("utilisateur", "prenom nom email role")
       .sort({ createdAt: -1 });
-
-    if (!notifications || notifications.length === 0) {
-      return res.status(200).json([]);
-    }
-
-    res.status(200).json(notifications);
+    return res.status(200).json(notifications);
   } catch (error) {
     console.error("Erreur getNotificationsByUser:", error);
     res.status(500).json({
@@ -100,8 +87,9 @@ module.exports.markAsRead = async (req, res) => {
       { estLu: true },
       { new: true }
     );
-    if (!notif) return res.status(404).json({ message: "Notification introuvable." });
-
+    if (!notif) {
+      return res.status(404).json({ message: "Notification introuvable." });
+    }
     res.status(200).json({ message: "Notification marquée comme lue ✅", notif });
   } catch (error) {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
@@ -114,34 +102,28 @@ module.exports.markAsRead = async (req, res) => {
 module.exports.deleteNotification = async (req, res) => {
   try {
     const deleted = await Notification.findByIdAndDelete(req.params.id);
-    if (!deleted) return res.status(404).json({ message: "Notification introuvable." });
-
+    if (!deleted) {
+      return res.status(404).json({ message: "Notification introuvable." });
+    }
     await User.updateMany({}, { $pull: { notifications: deleted._id } });
-
     res.status(200).json({ message: "Notification supprimée ✅" });
   } catch (error) {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
+
 /* ===========================================================
   DELETE ALL NOTIFICATIONS OF A USER
 =========================================================== */
 module.exports.deleteAllNotificationsOfUser = async (req, res) => {
   try {
     const { userId } = req.params;
-
-    // 🔍 Vérifier si l'utilisateur existe
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "Utilisateur introuvable." });
     }
-
-    //  Supprimer toutes les notifications associées à cet utilisateur
     const result = await Notification.deleteMany({ utilisateur: userId });
-
-    //  Vider la liste des notifications de l'utilisateur
     await User.findByIdAndUpdate(userId, { $set: { notifications: [] } });
-
     res.status(200).json({
       message: `Toutes les notifications de l'utilisateur "${user.nom} ${user.prenom}" ont été supprimées ✅`,
       deletedCount: result.deletedCount,
