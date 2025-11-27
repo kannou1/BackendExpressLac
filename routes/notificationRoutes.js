@@ -8,7 +8,7 @@ const { ControledAcces } = require("../middlewares/AccessControllers");
 router.post("/", requireAuthUser, ControledAcces("admin", "enseignant"), notificationController.createNotification);
 
 // Récupérer toutes les notifications
-router.get("/", requireAuthUser, notificationController.getAllNotifications);
+router.get("/", requireAuthUser, ControledAcces("admin"), notificationController.getAllNotifications);
 
 // Récupérer les notifications d’un utilisateur
 router.get("/user/:userId", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), notificationController.getNotificationsByUser);
