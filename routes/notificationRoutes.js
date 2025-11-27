@@ -17,7 +17,7 @@ router.get("/user/:userId", requireAuthUser, ControledAcces("admin", "enseignant
 router.put("/:id/read", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), notificationController.markAsRead);
 
 // Supprimer une notification
-router.delete("/:id", requireAuthUser, ControledAcces("admin", "enseignant"), notificationController.deleteNotification);
+router.delete("/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), notificationController.deleteNotification);
 
 // Supprimer toutes les notifications d’un utilisateur
 router.delete("/user/:userId", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), notificationController.deleteAllNotificationsOfUser);
