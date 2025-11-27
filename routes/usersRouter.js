@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const userController = require("../controllers/userController");
-const uploadfile = require("../middlewares/uploadfile");
+const uploadfile = require("../middlewares/images");
 const { forgotPassword, resetPassword } = require("../controllers/authController");
 const { requireAuthUser } = require("../middlewares/authMiddlewares");
 const { ControledAcces } = require("../middlewares/AccessControllers");

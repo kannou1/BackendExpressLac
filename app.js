@@ -24,6 +24,8 @@ const messageRoutes = require('./routes/messageRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const authLogMiddleware = require("./middlewares/authLogMiddleware");
 const announcementRoutes = require('./routes/announcementRoutes');// === APP EXPRESS ===
+const courseMaterialRoutes = require("./routes/courseMaterialsRoutes");
+
 var app = express();
 
 // ✅ CORS Configuration - Must be before other middleware
@@ -40,6 +42,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
+app.use('/materials', express.static(path.join(__dirname, 'public', 'courses_materials')));
 
 
 
@@ -80,6 +83,7 @@ app.use('/demande', demandeRoutes);
 app.use('/message', messageRoutes);
 app.use('/notification', notificationRoutes);
 app.use('/announcement', announcementRoutes);
+app.use("/course-material", courseMaterialRoutes);
 // === ERREURS ===
 app.use((req, res, next) => next(createError(404)));
 app.use((err, req, res, next) => {
