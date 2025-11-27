@@ -5,7 +5,7 @@ const demandeSchema = new mongoose.Schema({
   type: { 
     type: String, 
     required: true, 
-    enum: ["attestation_presence", "inscription", "reussite", "releve"],
+    enum: ["attestation_presence", "attestation_inscription", "attestation_reussite", "releve de notes","stage" , "autre"],
   },
   statut: { 
     type: String, 
@@ -13,6 +13,8 @@ const demandeSchema = new mongoose.Schema({
     enum: ["en_attente", "approuvee", "rejete"],
     default: "en_attente"
   },
+  description: { type: String },
+
   
   // Relations
   etudiant: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // effectue

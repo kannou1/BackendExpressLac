@@ -20,7 +20,7 @@ router.get("/user/:userId", demandeController.getDemandesByUser);
 router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant"), demandeController.updateDemande);
 
 // Supprimer une demande
-router.delete("/delete/:id", requireAuthUser, ControledAcces("admin", "enseignant"), demandeController.deleteDemande);
+router.delete("/delete/:id", requireAuthUser, ControledAcces("admin", "enseignant" , "etudiant"), demandeController.deleteDemande);
 
 // Supprimer toutes les demandes
 router.delete("/deleteAll", requireAuthUser, ControledAcces("admin"), demandeController.deleteAllDemandes);

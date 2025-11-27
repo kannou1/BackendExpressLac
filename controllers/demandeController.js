@@ -7,7 +7,7 @@ const Notification = require("../models/notificationSchema");
 =========================================================== */
 module.exports.createDemande = async (req, res) => {
   try {
-    const { nom, type, etudiant } = req.body;
+    const { nom, type, etudiant , description } = req.body;
 
     if (!nom || !type || !etudiant) {
       return res.status(400).json({ message: "Nom, type et étudiant sont obligatoires." });
@@ -24,6 +24,7 @@ module.exports.createDemande = async (req, res) => {
       nom,
       type,
       etudiant,
+      description,
       statut: "en_attente",
     });
 

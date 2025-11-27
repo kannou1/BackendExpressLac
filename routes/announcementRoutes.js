@@ -8,7 +8,7 @@ const { ControledAcces } = require("../middlewares/AccessControllers");
 router.post("/", requireAuthUser, ControledAcces("admin"), announcementController.createAnnouncement);
 
 // Récupérer toutes les annonces
-router.get("/", requireAuthUser, ControledAcces("admin"), announcementController.getAllAnnouncements);
+router.get("/", requireAuthUser, ControledAcces("admin" , "enseignant", "etudiant"), announcementController.getAllAnnouncements);
 
 // Récupérer les annonces pour l'utilisateur connecté
 router.get("/my-announcements", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), announcementController.getAnnouncementsForUser);
