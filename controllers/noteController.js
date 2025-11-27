@@ -40,8 +40,16 @@ module.exports.createNote = async (req, res) => {
     const { score, examen, etudiant, enseignant } = req.body;
     const io = req.io || req.app?.get("io");
 
-    if (!score || !examen || !etudiant || !enseignant)
-      return res.status(400).json({ message: "Score, examen, étudiant et enseignant obligatoires." });
+    if (score === undefined || !examen || !etudiant || !enseignant)
+      return res.status(400).json({ message: "Tous les champs obligatoires ne sont pas remplis." });
+
+    // Check if a note already exists
+    const existingNote = await Note.findOne({ examen, etudiant });
+    if (existingNote) {
+      return res.status(400).json({
+        message: "Une note pour cet examen existe déjà. Vous pouvez la modifier à la place.",
+      });
+    }
 
     const [etudiantData, enseignantData, examenData] = await Promise.all([
       User.findById(etudiant),
@@ -62,7 +70,7 @@ module.exports.createNote = async (req, res) => {
       Examen.findByIdAndUpdate(examen, { $addToSet: { notes: newNote._id } }),
     ]);
 
-  // Notification : création
+    // Notification
     await sendNotification(
       io,
       etudiant,
@@ -83,13 +91,15 @@ module.exports.createNote = async (req, res) => {
 module.exports.updateNote = async (req, res) => {
   try {
     const io = req.io || req.app?.get("io");
-    const updated = await Note.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    const updated = await Note.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    })
       .populate("etudiant")
       .populate("examen");
 
     if (!updated) return res.status(404).json({ message: "Note introuvable." });
 
-  // Notification : mise à jour
+    // Notification : mise à jour
     await sendNotification(
       io,
       updated.etudiant._id,
@@ -121,7 +131,7 @@ module.exports.deleteNote = async (req, res) => {
       Examen.updateMany({}, { $pull: { notes: deleted._id } }),
     ]);
 
-  // Notification : suppression
+    // Notification : suppression
     await sendNotification(
       io,
       deleted.etudiant._id,
