@@ -44,7 +44,7 @@ const userSchema = new mongoose.Schema({
   presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }],
   demandes: [{ type: mongoose.Schema.Types.ObjectId, ref: "Demande" }],
   messages: [{ type: mongoose.Schema.Types.ObjectId, ref: "Message" }],
-  emplois: [{ type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" }],
+  emploi: [{ type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" }],
   notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }],
   examensCrees: [{ type: mongoose.Schema.Types.ObjectId, ref: "Examen" }],
 

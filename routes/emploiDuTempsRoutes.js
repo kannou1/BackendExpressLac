@@ -4,22 +4,22 @@ const edtController = require("../controllers/emploiDuTempsController");
 const { requireAuthUser } = require("../middlewares/authMiddlewares");
 const { ControledAcces } = require("../middlewares/AccessControllers");
 
-// Créer un emploi du temps
-router.post("/create", requireAuthUser, ControledAcces("admin", "enseignant"), edtController.createEmploiDuTemps);
+// 🟢 Create an emploi du temps
+router.post("/create", requireAuthUser, ControledAcces("admin", "enseignant"), edtController.createEmploi);
 
-// Récupérer tous les emplois du temps
-router.get("/getAll", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), edtController.getAllEmploiDuTemps);
+// 🔍 Get all emplois du temps
+router.get("/getAll", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), edtController.getAllEmplois);
 
-// Récupérer un emploi du temps par ID
-router.get("/getById/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), edtController.getEmploiDuTempsById);
+// 🔍 Get emploi du temps by ID
+router.get("/getById/:id", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), edtController.getEmploiById);
 
-// Mettre à jour un emploi du temps
-router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant"), edtController.updateEmploiDuTemps);
+// ✏️ Update emploi du temps
+router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant"), edtController.updateEmploi);
 
-// Supprimer un emploi du temps
-router.delete("/delete/:id", requireAuthUser, ControledAcces("admin", "enseignant"), edtController.deleteEmploiDuTemps);
+// ❌ Delete emploi du temps
+router.delete("/delete/:id", requireAuthUser, ControledAcces("admin", "enseignant"), edtController.deleteEmploi);
 
-// Supprimer tous les emplois du temps
-router.delete("/deleteAll", requireAuthUser, ControledAcces("admin"), edtController.deleteAllEmploiDuTemps);
+// ❌ Delete all emplois du temps
+router.delete("/deleteAll", requireAuthUser, ControledAcces("admin"), edtController.deleteAllEmplois);
 
 module.exports = router;

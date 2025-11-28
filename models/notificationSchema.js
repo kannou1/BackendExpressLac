@@ -5,7 +5,7 @@ const notificationSchema = new mongoose.Schema({
   type: { 
     type: String, 
     required: true, 
-    enum: ["alerte", "systeme", "rappel","avertissement","demande","note","annonce", "material"], 
+    enum: ["alerte", "systeme", "rappel","avertissement","demande","note","annonce", "material", "emploiDuTemps"], 
     default: "systeme" 
   },
   estLu: { type: Boolean, default: false },

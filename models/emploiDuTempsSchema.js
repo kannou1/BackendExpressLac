@@ -5,12 +5,13 @@ const emploiDuTempsSchema = new mongoose.Schema({
   heureDebut: { type: String, required: true },
   heureFin: { type: String, required: true },
   salle: { type: String, required: true },
-
+  typeCours: { type: String, required: true },
   // ✅ Relation directe à la classe
   classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe", required: true },
 
   // ✅ Cours appartenant à cette classe
-  cours: [{ type: mongoose.Schema.Types.ObjectId, ref: "Cours" }],
+  cours: { type: mongoose.Schema.Types.ObjectId, ref: "Cours" },
+  notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }],
 }, { timestamps: true });
 
 const EmploiDuTemps = mongoose.model("EmploiDuTemps", emploiDuTempsSchema);

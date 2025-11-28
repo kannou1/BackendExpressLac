@@ -1,144 +1,201 @@
-const EmploiDuTemps = require("../models/emploiDuTempsSchema");
+const Emploi = require("../models/emploiDuTempsSchema");
+const Cours = require("../models/coursSchema");
 const Classe = require("../models/classeSchema");
 const User = require("../models/userSchema");
+const Notification = require("../models/notificationSchema");
 
 /* ===========================================================
-   🟢 CREATE
+   🟢 CREATE EMPLOI
 =========================================================== */
-module.exports.createEmploiDuTemps = async (req, res) => {
+module.exports.createEmploi = async (req, res) => {
   try {
-    const newEDT = await EmploiDuTemps.create(req.body);
+    let { jourSemaine, heureDebut, heureFin, salle, typeCours, classe: classeId, cours } = req.body;
 
-    // 🔍 Récupérer la classe liée
-    const classe = await Classe.findById(newEDT.classe).populate("etudiants enseignants");
+    if (!cours) return res.status(400).json({ message: "Cours manquant." });
+    if (!Array.isArray(cours)) cours = [cours];
 
-    if (classe) {
-      const message = `🗓️ Un nouvel emploi du temps a été ajouté pour la classe ${classe.nom}`;
-      const type = "emploiDuTemps";
-
-      // 🔔 Envoyer à tous les étudiants et enseignants
-      [...classe.etudiants, ...classe.enseignants].forEach(user => {
-        req.io.to(user._id.toString()).emit("receiveNotification", {
-          message,
-          type,
-          date: new Date(),
-        });
-      });
+    if (!jourSemaine || !heureDebut || !heureFin || !salle || !typeCours || !classeId) {
+      return res.status(400).json({ message: "Tous les champs obligatoires ne sont pas remplis." });
     }
 
-    res.status(201).json(newEDT);
-  } catch (error) {
-    console.error("❌ Erreur createEmploiDuTemps:", error);
-    res.status(400).json({ message: error.message });
-  }
-};
+    // Verify classe exists
+    const classe = await Classe.findById(classeId).populate("etudiants", "_id prenom nom");
+    if (!classe) return res.status(404).json({ message: "Classe introuvable." });
 
-/* ===========================================================
-   🔍 GET ALL
-=========================================================== */
-module.exports.getAllEmploiDuTemps = async (req, res) => {
-  try {
-    const edt = await EmploiDuTemps.find().populate("cours classe");
-    res.status(200).json(edt);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    // Verify all courses exist
+    const validCours = await Cours.find({ _id: { $in: cours } });
+    if (validCours.length !== cours.length) return res.status(404).json({ message: "Certains cours sont introuvables." });
 
-/* ===========================================================
-   🔍 GET BY ID
-=========================================================== */
-module.exports.getEmploiDuTempsById = async (req, res) => {
-  try {
-    const edt = await EmploiDuTemps.findById(req.params.id).populate("cours classe");
-    if (!edt) return res.status(404).json({ message: "Emploi du temps introuvable" });
-    res.status(200).json(edt);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    // === CHECK FOR TIME CONFLICTS ===
+    const existingEmplois = await Emploi.find({ classe: classeId, jourSemaine });
+    const conflict = existingEmplois.some(e => {
+      return (
+        (heureDebut >= e.heureDebut && heureDebut < e.heureFin) ||
+        (heureFin > e.heureDebut && heureFin <= e.heureFin) ||
+        (heureDebut <= e.heureDebut && heureFin >= e.heureFin)
+      );
+    });
 
-/* ===========================================================
-   ✏️ UPDATE
-=========================================================== */
-module.exports.updateEmploiDuTemps = async (req, res) => {
-  try {
-    const updatedEDT = await EmploiDuTemps.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate("classe");
-    if (!updatedEDT) return res.status(404).json({ message: "Emploi du temps introuvable" });
-
-    // 🔔 Notifier la classe concernée
-    const classe = await Classe.findById(updatedEDT.classe).populate("etudiants enseignants");
-    if (classe) {
-      const message = `🕐 L’emploi du temps de la classe ${classe.nom} a été mis à jour.`;
-      const type = "emploiDuTemps";
-
-      [...classe.etudiants, ...classe.enseignants].forEach(user => {
-        req.io.to(user._id.toString()).emit("receiveNotification", {
-          message,
-          type,
-          date: new Date(),
-        });
-      });
+    if (conflict) {
+      return res.status(400).json({ message: "Conflit : un autre cours est déjà prévu à cette période pour cette classe." });
     }
 
-    res.status(200).json(updatedEDT);
+    // Create emploi du temps
+    const newEmploi = new Emploi({
+      jourSemaine,
+      heureDebut,
+      heureFin,
+      salle,
+      typeCours,
+      classe: classeId,
+      cours,
+    });
+    await newEmploi.save();
+
+    // Update classe and courses
+    await Classe.findByIdAndUpdate(classeId, { $addToSet: { emplois: newEmploi._id } });
+    await Promise.all(cours.map(id => Cours.findByIdAndUpdate(id, { $addToSet: { emplois: newEmploi._id } })));
+
+    // Send notifications
+    await sendEmploiNotification(req, classe, `📅 Nouvel emploi du temps ajouté pour la classe "${classe.nom}" le ${jourSemaine} de ${heureDebut} à ${heureFin} en salle ${salle}.`);
+
+    res.status(201).json({ message: "Emploi du temps créé avec succès ✅", emploi: newEmploi });
+
   } catch (error) {
-    console.error("❌ Erreur updateEmploiDuTemps:", error);
-    res.status(400).json({ message: error.message });
+    console.error("❌ Erreur createEmploi:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+
+/* ===========================================================
+   ✏️ UPDATE EMPLOI
+=========================================================== */
+module.exports.updateEmploi = async (req, res) => {
+  try {
+    const updatedEmploi = await Emploi.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updatedEmploi) return res.status(404).json({ message: "Emploi introuvable." });
+
+    const classe = await Classe.findById(updatedEmploi.classe).populate("etudiants", "_id prenom nom");
+
+    await sendEmploiNotification(req, classe, `✏️ L’emploi du temps du ${updatedEmploi.jourSemaine} a été modifié.`);
+
+    res.status(200).json({ message: "Emploi mis à jour ✅", emploi: updatedEmploi });
+  } catch (error) {
+    console.error("❌ Erreur updateEmploi:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
 
 /* ===========================================================
-   ❌ DELETE
+   ❌ DELETE EMPLOI
 =========================================================== */
-module.exports.deleteEmploiDuTemps = async (req, res) => {
+module.exports.deleteEmploi = async (req, res) => {
   try {
-    const deletedEDT = await EmploiDuTemps.findByIdAndDelete(req.params.id).populate("classe");
-    if (!deletedEDT) return res.status(404).json({ message: "Emploi du temps introuvable" });
+    const deletedEmploi = await Emploi.findByIdAndDelete(req.params.id);
+    if (!deletedEmploi) return res.status(404).json({ message: "Emploi introuvable." });
 
-    // 🔔 Notifier la classe
-    const classe = await Classe.findById(deletedEDT.classe).populate("etudiants enseignants");
-    if (classe) {
-      const message = `⚠️ L’emploi du temps de la classe ${classe.nom} a été supprimé.`;
-      const type = "emploiDuTemps";
+    await Classe.updateMany({}, { $pull: { emplois: deletedEmploi._id } });
+    await Cours.updateMany({}, { $pull: { emplois: deletedEmploi._id } });
 
-      [...classe.etudiants, ...classe.enseignants].forEach(user => {
-        req.io.to(user._id.toString()).emit("receiveNotification", {
-          message,
-          type,
-          date: new Date(),
-        });
-      });
+    const classe = await Classe.findById(deletedEmploi.classe).populate("etudiants", "_id prenom nom");
+    await sendEmploiNotification(req, classe, `🚫 L’emploi du temps du ${deletedEmploi.jourSemaine} a été annulé.`);
+
+    res.status(200).json({ message: "Emploi supprimé avec succès ✅" });
+  } catch (error) {
+    console.error("❌ Erreur deleteEmploi:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   🔍 GET ALL EMPLOIS
+=========================================================== */
+module.exports.getAllEmplois = async (req, res) => {
+  try {
+    let emplois;
+    if (req.user.role === "etudiant") {
+      const user = await User.findById(req.user.id).populate("classe");
+      if (!user?.classe) return res.status(404).json({ message: "Classe introuvable." });
+      emplois = await Emploi.find({ classe: user.classe._id })
+        .populate("cours", "nom code")
+        .populate("classe", "nom annee specialisation");
+    } else if (req.user.role === "enseignant") {
+      emplois = await Emploi.find({ "cours.enseignantId": req.user.id })
+        .populate("cours", "nom code")
+        .populate("classe", "nom annee specialisation");
+    } else {
+      emplois = await Emploi.find()
+        .populate("cours", "nom code")
+        .populate("classe", "nom annee specialisation");
+    }
+    res.status(200).json(emplois);
+  } catch (error) {
+    console.error("❌ Erreur getAllEmplois:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   🔍 GET EMPLOI BY ID
+=========================================================== */
+module.exports.getEmploiById = async (req, res) => {
+  try {
+    const emploi = await Emploi.findById(req.params.id)
+      .populate("cours", "nom code")
+      .populate("classe", "nom annee specialisation");
+    if (!emploi) return res.status(404).json({ message: "Emploi introuvable." });
+    res.status(200).json(emploi);
+  } catch (error) {
+    console.error("❌ Erreur getEmploiById:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   ❌ DELETE ALL EMPLOIS
+=========================================================== */
+module.exports.deleteAllEmplois = async (req, res) => {
+  try {
+    await Emploi.deleteMany({});
+    await Classe.updateMany({}, { $set: { emplois: [] } });
+    await Cours.updateMany({}, { $set: { emplois: [] } });
+    res.status(200).json({ message: "Tous les emplois du temps ont été supprimés ✅" });
+  } catch (error) {
+    console.error("❌ Erreur deleteAllEmplois:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   ⚙️ UTIL: SEND NOTIFICATIONS
+=========================================================== */
+async function sendEmploiNotification(req, classe, message) {
+  try {
+    if (!classe?.etudiants?.length) return;
+
+    const io = req.io;
+    if (!io) {
+      console.warn("⚠️ io non trouvé dans req.app (socket non initialisé)");
+      return;
     }
 
-    res.status(200).json({ message: "Emploi du temps supprimé ✅" });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    for (const etu of classe.etudiants) {
+      const notif = await Notification.create({
+        message,
+        type: "rappel",
+        utilisateur: etu._id,
+      });
 
-/* ===========================================================
-   ⚠️ DELETE ALL
-=========================================================== */
-module.exports.deleteAllEmploiDuTemps = async (req, res) => {
-  try {
-    const result = await EmploiDuTemps.deleteMany({});
+      await User.findByIdAndUpdate(etu._id, { $push: { notifications: notif._id } });
 
-    // 🔔 Notifier tout le monde (si besoin)
-    const allUsers = await User.find({});
-    allUsers.forEach(user => {
-      req.io.to(user._id.toString()).emit("receiveNotification", {
-        message: "⚠️ Tous les emplois du temps ont été supprimés du système.",
-        type: "emploiDuTemps",
+      io.to(etu._id.toString()).emit("receiveNotification", {
+        message,
+        type: "rappel",
         date: new Date(),
       });
-    });
-
-    res.status(200).json({
-      message: "Tous les emplois du temps supprimés ✅",
-      deletedCount: result.deletedCount,
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    }
+  } catch (err) {
+    console.error("⚠️ Erreur lors de l’envoi des notifications :", err);
   }
-};
+}
