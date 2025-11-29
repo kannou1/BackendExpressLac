@@ -13,6 +13,7 @@ const coursSchema = new mongoose.Schema({
   examens: [{ type: mongoose.Schema.Types.ObjectId, ref: "Examen" }], // contient
   presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }], // suivi par
   emplois: [{ type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" }], // planifié dans
+  seances: [{ type: mongoose.Schema.Types.ObjectId, ref: "Seance" }], // séances de ce cours
   materials: [{ type: mongoose.Schema.Types.ObjectId, ref: "CourseMaterial" }], // matériels de cours
 }, { timestamps: true });
 

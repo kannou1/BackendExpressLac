@@ -1,16 +1,25 @@
 const mongoose = require("mongoose");
 
 const emploiDuTempsSchema = new mongoose.Schema({
-  jourSemaine: { type: String, required: true },
-  heureDebut: { type: String, required: true },
-  heureFin: { type: String, required: true },
-  salle: { type: String, required: true },
-  typeCours: { type: String, required: true },
-  // ✅ Relation directe à la classe
-  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe", required: true },
+  // Basic info
+  titre: { type: String, required: true }, // e.g., "Semaine 1 - Janvier 2024"
+  description: { type: String },
+  dateDebut: { type: Date, required: true }, // Start of the week
+  dateFin: { type: Date, required: true },   // End of the week
 
-  // ✅ Cours appartenant à cette classe
-  cours: { type: mongoose.Schema.Types.ObjectId, ref: "Cours" },
+  // Relations
+  classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe", required: true },
+  seances: [{ type: mongoose.Schema.Types.ObjectId, ref: "Seance" }],
+
+  // Status
+  statut: {
+    type: String,
+    enum: ["draft", "published", "archived"],
+    default: "draft"
+  },
+
+  // Metadata
+  creePar: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   notifications: [{ type: mongoose.Schema.Types.ObjectId, ref: "Notification" }],
 }, { timestamps: true });
 
