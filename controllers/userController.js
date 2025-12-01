@@ -305,8 +305,12 @@ module.exports.updatePassword = async (req, res) => {
     const { id } = req.params;
     const { oldPassword, newPassword } = req.body;
 
-    const user = await userModel.findById(id);
+    // FIX: Ensure password is selected
+    const user = await userModel.findById(id).select("+password");
     if (!user) return res.status(404).json({ message: "Utilisateur introuvable." });
+
+    if (!oldPassword || !newPassword)
+      return res.status(400).json({ message: "Champs manquants." });
 
     const isMatch = await user.comparePassword(oldPassword);
     if (!isMatch) return res.status(400).json({ message: "Ancien mot de passe incorrect." });
@@ -321,7 +325,7 @@ module.exports.updatePassword = async (req, res) => {
     user.password = newPassword;
     await user.save();
 
-  // Email notification
+    // EMAIL
     const transporter = nodemailer.createTransport({
       service: "gmail",
       auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -332,22 +336,22 @@ module.exports.updatePassword = async (req, res) => {
       to: user.email,
       subject: "🔐 Votre mot de passe a été changé",
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin:auto; padding:20px; border-radius:10px; background-color:#f9f9f9;">
+        <div style="font-family: Arial; padding:20px;">
           <h2 style="color:#4F46E5;">EduNex</h2>
           <p>Bonjour <strong>${user.prenom}</strong>,</p>
           <p>Votre mot de passe a été mis à jour avec succès ✅</p>
-          <p>Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement l'administrateur.</p>
-          <p style="font-size:12px; color:#888;">© 2025 EduNex. Tous droits réservés.</p>
         </div>
       `,
     });
 
-    res.status(200).json({ message: "Mot de passe mis à jour et email de confirmation envoyé ✅" });
+    res.status(200).json({ message: "Mot de passe mis à jour et email envoyé." });
+
   } catch (error) {
     console.error("❌ Erreur updatePassword:", error.message);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
+
 
 // ------------------- DELETE USER -------------------
 module.exports.deleteUserById = async (req, res) => {

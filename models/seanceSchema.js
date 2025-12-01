@@ -16,7 +16,7 @@ const seanceSchema = new mongoose.Schema({
   salle: { type: String, required: true },
   typeCours: {
     type: String,
-    enum: ["Cours Magistral", "TD", "TP", "Exam", "Conference"],
+    enum: ["Cours Magistral", "TD", "TP", "Exam", "Conference","CM"],
     required: true
   },
 
