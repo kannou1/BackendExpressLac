@@ -63,11 +63,9 @@ module.exports.updateExamen = async (req, res) => {
     const updatedExam = await Examen.findByIdAndUpdate(req.params.id, req.body, { new: true });
     if (!updatedExam) return res.status(404).json({ message: "Examen introuvable." });
 
-    // Récupérer la classe liée
     const classe = await Classe.findById(updatedExam.classeId).populate("etudiants", "_id prenom nom");
 
-    // === NOTIFICATION MODIFICATION ===
-    await sendExamNotification(req, classe, `✏️ L’examen "${updatedExam.nom}" a été modifié. Consultez les détails.`);
+    await sendExamNotification(req, classe, `✏️ L'examen "${updatedExam.nom}" a été modifié. Consultez les détails.`);
 
     res.status(200).json({ message: "Examen mis à jour ✅", examen: updatedExam });
   } catch (error) {
@@ -90,11 +88,9 @@ module.exports.deleteExamen = async (req, res) => {
       User.updateMany({}, { $pull: { examens: deletedExam._id } }),
     ]);
 
-    // Récupérer la classe liée
     const classe = await Classe.findById(deletedExam.classeId).populate("etudiants", "_id prenom nom");
 
-    // === NOTIFICATION SUPPRESSION ===
-    await sendExamNotification(req, classe, `🚫 L’examen "${deletedExam.nom}" a été annulé.`);
+    await sendExamNotification(req, classe, `🚫 L'examen "${deletedExam.nom}" a été annulé.`);
 
     res.status(200).json({ message: "Examen supprimé avec succès ✅" });
   } catch (error) {
@@ -110,7 +106,6 @@ module.exports.getAllExamens = async (req, res) => {
   try {
     let examens;
 
-    // Si c’est un étudiant, on filtre par sa classe
     if (req.user.role === "etudiant") {
       const user = await User.findById(req.user.id).populate("classe");
       if (!user || !user.classe) {
@@ -121,17 +116,11 @@ module.exports.getAllExamens = async (req, res) => {
         .populate("coursId", "nom code")
         .populate("enseignantId", "nom prenom email")
         .populate("classeId", "nom annee specialisation");
-    }
-
-    // Si c’est un enseignant → tous les examens qu’il a créés
-    else if (req.user.role === "enseignant") {
+    } else if (req.user.role === "enseignant") {
       examens = await Examen.find({ enseignantId: req.user.id })
         .populate("coursId", "nom code")
         .populate("classeId", "nom annee specialisation");
-    }
-
-    // Si c’est un admin → tous les examens
-    else {
+    } else {
       examens = await Examen.find()
         .populate("coursId", "nom code")
         .populate("enseignantId", "nom prenom email")
@@ -153,12 +142,127 @@ module.exports.getExamenById = async (req, res) => {
     const examen = await Examen.findById(req.params.id)
       .populate("coursId", "nom code")
       .populate("enseignantId", "nom prenom email")
-      .populate("classeId", "nom annee specialisation");
+      .populate("classeId", "nom annee specialisation")
+      .populate("submissions.studentId", "nom prenom email"); // ✅ Populate student info
+    
     if (!examen) return res.status(404).json({ message: "Examen introuvable." });
+    
     res.status(200).json(examen);
   } catch (error) {
     console.error("❌ Erreur getExamenById:", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   📤 SUBMIT ASSIGNMENT - CORRECTED
+=========================================================== */
+module.exports.submitAssignment = async (req, res) => {
+  try {
+    const { examenId } = req.params;
+    const studentId = req.user.id; // ✅ From auth middleware
+    
+    console.log("📝 Submit Assignment:");
+    console.log("Examen ID:", examenId);
+    console.log("Student ID:", studentId);
+    console.log("File:", req.file);
+
+    // ✅ Check if file was uploaded
+    if (!req.file) {
+      return res.status(400).json({ message: "Fichier requis" });
+    }
+
+    // ✅ Find the exam
+    const examen = await Examen.findById(examenId).populate("enseignantId");
+    if (!examen) {
+      return res.status(404).json({ message: "Examen introuvable" });
+    }
+
+    // ✅ Check if it's an assignment type (case-insensitive)
+    if (examen.type.toLowerCase() !== "assignment") {
+      return res.status(400).json({ 
+        message: "Impossible de soumettre un fichier pour cet examen." 
+      });
+    }
+
+    // ✅ Check if past due date
+    if (examen.date && new Date(examen.date) < new Date()) {
+      return res.status(400).json({ 
+        message: "La date limite de soumission est dépassée" 
+      });
+    }
+
+    // ✅ Initialize submissions array if not exists
+    if (!examen.submissions) {
+      examen.submissions = [];
+    }
+
+    // ✅ Check if student already submitted
+    const existingSubmissionIndex = examen.submissions.findIndex(
+      sub => sub.studentId.toString() === studentId.toString()
+    );
+
+    if (existingSubmissionIndex !== -1) {
+      return res.status(400).json({ 
+        message: "Vous avez déjà soumis ce devoir" 
+      });
+    }
+
+    // ✅ Create submission object
+    const newSubmission = {
+      studentId: studentId,
+      file: req.file.filename, // ✅ Use filename from multer
+      dateSubmission: new Date(),
+      note: null,
+      commentaire: null
+    };
+
+    // ✅ Add submission
+    examen.submissions.push(newSubmission);
+    await examen.save();
+
+    console.log("✅ Assignment submitted successfully");
+
+    // ✅ Send notification to teacher
+    if (examen.enseignantId) {
+      try {
+        const student = await User.findById(studentId);
+        const studentName = student ? `${student.prenom} ${student.nom}` : "Un étudiant";
+        
+        const notif = await Notification.create({
+          message: `📩 ${studentName} a soumis l'assignment "${examen.nom}"`,
+          type: "submission",
+          utilisateur: examen.enseignantId._id,
+        });
+
+        await User.findByIdAndUpdate(examen.enseignantId._id, { 
+          $push: { notifications: notif._id } 
+        });
+
+        if (req.app.io) {
+          req.app.io.to(examen.enseignantId._id.toString()).emit("receiveNotification", {
+            message: notif.message,
+            type: notif.type,
+            date: new Date(),
+          });
+        }
+      } catch (notifError) {
+        console.error("⚠️ Erreur notification:", notifError);
+        // Don't fail the submission if notification fails
+      }
+    }
+
+    res.status(200).json({ 
+      message: "Fichier soumis avec succès ✅", 
+      submission: newSubmission 
+    });
+
+  } catch (err) {
+    console.error("❌ submitAssignment error:", err);
+    res.status(500).json({ 
+      message: "Erreur serveur", 
+      error: err.message 
+    });
   }
 };
 
@@ -169,7 +273,7 @@ async function sendExamNotification(req, classe, message) {
   try {
     if (!classe || !classe.etudiants?.length) return;
 
-    const io = req.io;
+    const io = req.app.io; // ✅ Changed from req.io to req.app.io
     if (!io) {
       console.warn("⚠️ io non trouvé dans req.app (socket non initialisé)");
       return;
@@ -191,6 +295,6 @@ async function sendExamNotification(req, classe, message) {
       });
     }
   } catch (err) {
-    console.error("⚠️ Erreur lors de l’envoi des notifications :", err);
+    console.error("⚠️ Erreur lors de l'envoi des notifications :", err);
   }
 }
