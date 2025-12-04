@@ -3,6 +3,8 @@ const Cours = require("../models/coursSchema");
 const Classe = require("../models/classeSchema");
 const User = require("../models/userSchema");
 const Notification = require("../models/notificationSchema");
+const path = require("path");
+const fs = require("fs");
 
 /* ===========================================================
    🟢 CREATE EXAM
@@ -265,6 +267,248 @@ module.exports.submitAssignment = async (req, res) => {
     });
   }
 };
+
+/* ===========================================================
+   📥 DOWNLOAD ASSIGNMENT FILE
+=========================================================== */
+module.exports.downloadAssignmentFile = async (req, res) => {
+  try {
+    const { examenId, studentId } = req.params;
+
+    const examen = await Examen.findById(examenId);
+    if (!examen) {
+      return res.status(404).json({ message: "Examen introuvable" });
+    }
+
+    // Check if user has access to this exam
+    if (req.user.role === "enseignant" && examen.enseignantId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Accès non autorisé" });
+    }
+
+    if (req.user.role === "etudiant" && studentId !== req.user.id) {
+      return res.status(403).json({ message: "Accès non autorisé" });
+    }
+
+    const submission = examen.submissions.find(
+      sub => sub.studentId.toString() === studentId
+    );
+
+    if (!submission || !submission.file) {
+      return res.status(404).json({ message: "Fichier non trouvé" });
+    }
+
+    const filePath = path.join(__dirname, "../public/assignments", submission.file);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ message: "Fichier non trouvé sur le serveur" });
+    }
+
+    res.download(filePath);
+  } catch (error) {
+    console.error("❌ Erreur downloadAssignmentFile:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   📦 DOWNLOAD ALL ASSIGNMENT FILES
+=========================================================== */
+module.exports.downloadAllAssignmentFiles = async (req, res) => {
+  try {
+    const { examenId } = req.params;
+
+    const examen = await Examen.findById(examenId).populate("submissions.studentId", "nom prenom");
+    if (!examen) {
+      return res.status(404).json({ message: "Examen introuvable" });
+    }
+
+    // Check if teacher has access to this exam
+    if (req.user.role === "enseignant" && examen.enseignantId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Accès non autorisé" });
+    }
+
+    const submissions = examen.submissions.filter(sub => sub.file);
+
+    if (submissions.length === 0) {
+      return res.status(404).json({ message: "Aucun fichier soumis" });
+    }
+
+    const archiver = require('archiver');
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename="${examen.nom}_submissions.zip"`);
+
+    archive.pipe(res);
+
+    for (const submission of submissions) {
+      const filePath = path.join(__dirname, "../public/assignments", submission.file);
+      if (fs.existsSync(filePath)) {
+        const student = submission.studentId;
+        const studentName = student ? `${student.prenom}_${student.nom}` : `student_${submission.studentId}`;
+        const fileName = `${studentName}_${submission.file}`;
+        archive.file(filePath, { name: fileName });
+      }
+    }
+
+    archive.finalize();
+  } catch (error) {
+    console.error("❌ Erreur downloadAllAssignmentFiles:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   📊 GET ASSIGNMENT STATS
+=========================================================== */
+module.exports.getAssignmentStats = async (req, res) => {
+  try {
+    const { examenId } = req.params;
+
+    const examen = await Examen.findById(examenId).populate("classeId", "etudiants");
+    if (!examen) {
+      return res.status(404).json({ message: "Examen introuvable" });
+    }
+
+    // Check if teacher has access to this exam
+    if (req.user.role === "enseignant" && examen.enseignantId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Accès non autorisé" });
+    }
+
+    const totalStudents = examen.classeId?.etudiants?.length || 0;
+    const submissions = examen.submissions || [];
+    const submittedCount = submissions.length;
+    const gradedCount = submissions.filter(sub => sub.note !== null && sub.note !== undefined).length;
+
+    const grades = submissions
+      .filter(sub => sub.note !== null && sub.note !== undefined)
+      .map(sub => sub.note);
+
+    const stats = {
+      totalStudents,
+      submittedCount,
+      gradedCount,
+      pendingCount: submittedCount - gradedCount,
+      submissionRate: totalStudents > 0 ? (submittedCount / totalStudents * 100).toFixed(1) : 0,
+      gradingRate: submittedCount > 0 ? (gradedCount / submittedCount * 100).toFixed(1) : 0,
+      averageGrade: grades.length > 0 ? (grades.reduce((a, b) => a + b, 0) / grades.length).toFixed(1) : null,
+      highestGrade: grades.length > 0 ? Math.max(...grades) : null,
+      lowestGrade: grades.length > 0 ? Math.min(...grades) : null,
+      gradeDistribution: calculateGradeDistribution(grades, examen.noteMax)
+    };
+
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error("❌ Erreur getAssignmentStats:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   📤 EXPORT ASSIGNMENT DATA
+=========================================================== */
+module.exports.exportAssignmentData = async (req, res) => {
+  try {
+    const { examenId } = req.params;
+    const { format = 'csv' } = req.query;
+
+    const examen = await Examen.findById(examenId)
+      .populate("submissions.studentId", "nom prenom email")
+      .populate("enseignantId", "nom prenom")
+      .populate("coursId", "nom code")
+      .populate("classeId", "nom");
+
+    if (!examen) {
+      return res.status(404).json({ message: "Examen introuvable" });
+    }
+
+    // Check if teacher has access to this exam
+    if (req.user.role === "enseignant" && examen.enseignantId.toString() !== req.user.id) {
+      return res.status(403).json({ message: "Accès non autorisé" });
+    }
+
+    const submissions = examen.submissions || [];
+
+    if (format === 'csv') {
+      const csvData = [
+        ['Student Name', 'Email', 'Submission Date', 'Grade', 'Max Grade', 'Status', 'File Submitted'],
+        ...submissions.map(sub => [
+          sub.studentId ? `${sub.studentId.prenom} ${sub.studentId.nom}` : 'Unknown',
+          sub.studentId?.email || '',
+          sub.dateSubmission ? new Date(sub.dateSubmission).toLocaleDateString() : '',
+          sub.note !== null && sub.note !== undefined ? sub.note : '',
+          examen.noteMax || '',
+          sub.note !== null && sub.note !== undefined ? 'Graded' : 'Submitted',
+          sub.file ? 'Yes' : 'No'
+        ])
+      ];
+
+      const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${examen.nom}_results.csv"`);
+      res.send(csvContent);
+    } else {
+      // JSON format
+      const jsonData = {
+        assignment: {
+          name: examen.nom,
+          description: examen.description,
+          dueDate: examen.date,
+          maxGrade: examen.noteMax,
+          course: examen.coursId?.nom,
+          class: examen.classeId?.nom,
+          teacher: examen.enseignantId ? `${examen.enseignantId.prenom} ${examen.enseignantId.nom}` : ''
+        },
+        submissions: submissions.map(sub => ({
+          student: {
+            name: sub.studentId ? `${sub.studentId.prenom} ${sub.studentId.nom}` : 'Unknown',
+            email: sub.studentId?.email || ''
+          },
+          submissionDate: sub.dateSubmission,
+          grade: sub.note,
+          maxGrade: examen.noteMax,
+          status: sub.note !== null && sub.note !== undefined ? 'graded' : 'submitted',
+          fileSubmitted: !!sub.file,
+          feedback: sub.commentaire || ''
+        }))
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${examen.nom}_results.json"`);
+      res.json(jsonData);
+    }
+  } catch (error) {
+    console.error("❌ Erreur exportAssignmentData:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
+
+/* ===========================================================
+   ⚙️ UTILITY FUNCTIONS
+=========================================================== */
+function calculateGradeDistribution(grades, maxGrade) {
+  if (grades.length === 0) return {};
+
+  const distribution = {
+    'A (90-100%)': 0,
+    'B (80-89%)': 0,
+    'C (70-79%)': 0,
+    'D (60-69%)': 0,
+    'F (0-59%)': 0
+  };
+
+  grades.forEach(grade => {
+    const percentage = maxGrade > 0 ? (grade / maxGrade) * 100 : 0;
+    if (percentage >= 90) distribution['A (90-100%)']++;
+    else if (percentage >= 80) distribution['B (80-89%)']++;
+    else if (percentage >= 70) distribution['C (70-79%)']++;
+    else if (percentage >= 60) distribution['D (60-69%)']++;
+    else distribution['F (0-59%)']++;
+  });
+
+  return distribution;
+}
 
 /* ===========================================================
    ⚙️ FONCTION UTILITAIRE : envoi notification + socket

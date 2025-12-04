@@ -416,8 +416,9 @@ module.exports.deleteAllUsers = async (req, res) => {
 // ===========================================================
 // AUTHENTIFICATION (LOGIN / LOGOUT / GET AUTH)
 // ===========================================================
+// 5h en secondes
+const maxAge = 5 * 60 * 60;
 
-const maxAge = 1 * 60 * 60; // 1h en secondes
 
 const createToken = (id) => {
   return jwt.sign({ id },  process.env.JWT_SECRET, { expiresIn: maxAge });
