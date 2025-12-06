@@ -333,7 +333,6 @@ module.exports.downloadAllAssignmentFiles = async (req, res) => {
       return res.status(404).json({ message: "Aucun fichier soumis" });
     }
 
-    const archiver = require('archiver');
     const archive = archiver('zip', { zlib: { level: 9 } });
 
     res.setHeader('Content-Type', 'application/zip');

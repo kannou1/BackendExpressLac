@@ -70,6 +70,16 @@ module.exports.createNote = async (req, res) => {
       Examen.findByIdAndUpdate(examen, { $addToSet: { notes: newNote._id } }),
     ]);
 
+    // Populate the note before returning
+    const populatedNote = await Note.findById(newNote._id)
+      .populate("etudiant", "prenom nom email classe")
+      .populate("enseignant", "prenom nom email")
+      .populate({
+        path: "examen",
+        select: "nom type date noteMax",
+        populate: { path: "coursId", select: "nom code credits semestre" },
+      });
+
     // Notification
     await sendNotification(
       io,
@@ -78,7 +88,7 @@ module.exports.createNote = async (req, res) => {
       "note"
     );
 
-    res.status(201).json({ message: "Note ajoutée avec succès ✅", note: newNote });
+    res.status(201).json({ message: "Note ajoutée avec succès ✅", note: populatedNote });
   } catch (error) {
     console.error("❌ Erreur createNote:", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
@@ -94,8 +104,13 @@ module.exports.updateNote = async (req, res) => {
     const updated = await Note.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
     })
-      .populate("etudiant")
-      .populate("examen");
+      .populate("etudiant", "prenom nom email classe")
+      .populate("enseignant", "prenom nom email")
+      .populate({
+        path: "examen",
+        select: "nom type date noteMax",
+        populate: { path: "coursId", select: "nom code credits semestre" },
+      });
 
     if (!updated) return res.status(404).json({ message: "Note introuvable." });
 
