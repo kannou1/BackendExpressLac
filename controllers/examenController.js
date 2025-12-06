@@ -121,12 +121,20 @@ module.exports.getAllExamens = async (req, res) => {
     } else if (req.user.role === "enseignant") {
       examens = await Examen.find({ enseignantId: req.user.id })
         .populate("coursId", "nom code")
-        .populate("classeId", "nom annee specialisation");
+        .populate({
+          path: "classeId",
+          select: "nom annee specialisation",
+          populate: {
+            path: "etudiants",
+            select: "nom prenom email"
+          }
+        });
     } else {
       examens = await Examen.find()
         .populate("coursId", "nom code")
         .populate("enseignantId", "nom prenom email")
-        .populate("classeId", "nom annee specialisation");
+        .populate("classeId", "nom annee specialisation etudiants")
+        .populate("classeId.etudiants", "nom prenom email");
     }
 
     res.status(200).json(examens);

@@ -37,19 +37,12 @@ async function sendNotification(io, userId, message, type = "note") {
 =========================================================== */
 module.exports.createNote = async (req, res) => {
   try {
-    const { score, examen, etudiant, enseignant } = req.body;
+    const { score, examen, etudiant, feedback } = req.body;
+    const enseignant = req.user._id; // Use authenticated user as teacher
     const io = req.io || req.app?.get("io");
 
-    if (score === undefined || !examen || !etudiant || !enseignant)
+    if (score === undefined || !examen || !etudiant)
       return res.status(400).json({ message: "Tous les champs obligatoires ne sont pas remplis." });
-
-    // Check if a note already exists
-    const existingNote = await Note.findOne({ examen, etudiant });
-    if (existingNote) {
-      return res.status(400).json({
-        message: "Une note pour cet examen existe déjà. Vous pouvez la modifier à la place.",
-      });
-    }
 
     const [etudiantData, enseignantData, examenData] = await Promise.all([
       User.findById(etudiant),
@@ -62,16 +55,29 @@ module.exports.createNote = async (req, res) => {
       return res.status(400).json({ message: "Enseignant introuvable ou rôle invalide." });
     if (!examenData) return res.status(404).json({ message: "Examen introuvable." });
 
-    const newNote = await Note.create({ score, examen, etudiant, enseignant });
+    // Check if a note already exists
+    let note = await Note.findOne({ examen, etudiant });
+    let isNew = false;
 
-    await Promise.all([
-      User.findByIdAndUpdate(etudiant, { $addToSet: { notes: newNote._id } }),
-      User.findByIdAndUpdate(enseignant, { $addToSet: { notes: newNote._id } }),
-      Examen.findByIdAndUpdate(examen, { $addToSet: { notes: newNote._id } }),
-    ]);
+    if (note) {
+      // Update existing note
+      note.score = score;
+      note.feedback = feedback || "";
+      await note.save();
+    } else {
+      // Create new note
+      note = await Note.create({ score, examen, etudiant, enseignant, feedback: feedback || "" });
+      isNew = true;
+
+      await Promise.all([
+        User.findByIdAndUpdate(etudiant, { $addToSet: { notes: note._id } }),
+        User.findByIdAndUpdate(enseignant, { $addToSet: { notes: note._id } }),
+        Examen.findByIdAndUpdate(examen, { $addToSet: { notes: note._id } }),
+      ]);
+    }
 
     // Populate the note before returning
-    const populatedNote = await Note.findById(newNote._id)
+    const populatedNote = await Note.findById(note._id)
       .populate("etudiant", "prenom nom email classe")
       .populate("enseignant", "prenom nom email")
       .populate({
@@ -81,14 +87,18 @@ module.exports.createNote = async (req, res) => {
       });
 
     // Notification
+    const action = isNew ? "Nouvelle note ajoutée" : "Note mise à jour";
     await sendNotification(
       io,
       etudiant,
-      `📝 Nouvelle note ajoutée pour "${examenData.nom}" : ${score}/${examenData.noteMax}`,
+      `📝 ${action} pour "${examenData.nom}" : ${score}/${examenData.noteMax}`,
       "note"
     );
 
-    res.status(201).json({ message: "Note ajoutée avec succès ✅", note: populatedNote });
+    res.status(isNew ? 201 : 200).json({
+      message: isNew ? "Note ajoutée avec succès ✅" : "Note mise à jour ✅",
+      note: populatedNote
+    });
   } catch (error) {
     console.error("❌ Erreur createNote:", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });

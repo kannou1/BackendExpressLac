@@ -4,6 +4,7 @@ const path = require("path");
 const bcrypt = require("bcrypt");
 const classeModel = require("../models/classeSchema");
 const nodemailer = require("nodemailer");
+const mongoose = require("mongoose");
 
 // Related models for cascade delete
 const Cours = require("../models/coursSchema");
@@ -269,32 +270,36 @@ module.exports.updateUserById = async (req, res) => {
     const { id } = req.params;
     const updateData = { ...req.body };
 
+    // Convert IDs
+    if (updateData.classe)
+      updateData.classe = new mongoose.Types.ObjectId(updateData.classe);
+
     const user = await userModel.findById(id);
     if (!user) return res.status(404).json({ message: "Utilisateur introuvable" });
 
-    if (req.file) {
-      if (user.image_User) await deleteImageFile(user.image_User);
-      updateData.image_User = req.file.filename;
-    }
+    // Update student class
+    if (user.role === "etudiant" && updateData.classe?.toString() !== user.classe?.toString()) {
 
-  // Gestion classe (étudiant)
-    if (user.role === "etudiant" && updateData.classe && updateData.classe !== user.classe?.toString()) {
-      if (user.classe) await classeModel.updateOne({ _id: user.classe }, { $pull: { etudiants: id } });
-      await classeModel.updateOne({ _id: updateData.classe }, { $addToSet: { etudiants: id } });
-    }
+      // Remove from old class
+      if (user.classe)
+        await classeModel.updateOne(
+          { _id: user.classe },
+          { $pull: { etudiants: id } }
+        );
 
-  // Gestion classes (enseignant)
-    if (user.role === "enseignant" && updateData.classes) {
-      const oldClasses = user.classes.map((c) => c.toString());
-      const newClasses = updateData.classes;
-      await classeModel.updateMany({ _id: { $in: oldClasses } }, { $pull: { enseignants: id } });
-      await classeModel.updateMany({ _id: { $in: newClasses } }, { $addToSet: { enseignants: id } });
+      // Add to new class
+      await classeModel.updateOne(
+        { _id: updateData.classe },
+        { $addToSet: { etudiants: id } }
+      );
     }
 
     const updatedUser = await userModel.findByIdAndUpdate(id, updateData, { new: true });
-    res.status(200).json({ message: "Utilisateur mis à jour ✅", updatedUser });
+
+    res.status(200).json({ message: "Utilisateur mis à jour", updatedUser });
+
   } catch (error) {
-    console.error("❌ Erreur updateUserById:", error.message);
+    console.error("Erreur updateUserById:", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };

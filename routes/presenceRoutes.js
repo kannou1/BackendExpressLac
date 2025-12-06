@@ -19,17 +19,17 @@ router.get("/getByEtudiant/:etudiantId", requireAuthUser, ControledAcces("admin"
 // Récupérer toutes les présences d’un enseignant
 router.get("/getByEnseignant/:enseignantId", requireAuthUser, ControledAcces("admin"), presenceController.getPresenceByEnseignant);
 
-// Récupérer toutes les présences d’un cours
-router.get("/getByCours/:coursId", requireAuthUser, ControledAcces("admin", "enseignant"), presenceController.getPresenceByCours);
+// Récupérer toutes les présences d'une séance
+router.get("/getBySeance/:seanceId", requireAuthUser, ControledAcces("admin", "enseignant"), presenceController.getPresenceBySeance);
 
-// Taux de présence d’un étudiant (tous les cours)
+// Taux de présence d'un étudiant (toutes les séances)
 router.get("/taux/etudiant/:etudiantId", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), presenceController.getTauxPresence);
 
-// Taux de présence d’un étudiant pour un cours précis
-router.get("/taux/etudiant/:etudiantId/cours/:coursId", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), presenceController.getTauxPresence);
+// Taux de présence d'un étudiant pour une séance précise
+router.get("/taux/etudiant/:etudiantId/seance/:seanceId", requireAuthUser, ControledAcces("admin", "enseignant", "etudiant"), presenceController.getTauxPresence);
 
-// Taux de présence global d’un cours
-router.get("/taux/cours/:coursId", requireAuthUser, ControledAcces("admin", "enseignant"), presenceController.getTauxPresenceParCours);
+// Taux de présence global d'une séance
+router.get("/taux/seance/:seanceId", requireAuthUser, ControledAcces("admin", "enseignant"), presenceController.getTauxPresenceParSeance);
 
 // Mettre à jour une présence
 router.put("/update/:id", requireAuthUser, ControledAcces("admin", "enseignant"), presenceController.updatePresence);

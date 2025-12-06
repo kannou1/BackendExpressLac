@@ -5,8 +5,11 @@ const noteSchema = new mongoose.Schema(
     score: {
       type: Number,
       required: true,
-      min: [0, "La note ne peut pas être négative."],
-      max: [20, "La note maximale est 20."]
+      min: [0, "La note ne peut pas être négative."]
+    },
+    feedback: {
+      type: String,
+      default: ""
     },
 
     // 🔗 Relations

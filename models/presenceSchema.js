@@ -16,11 +16,11 @@ const presenceSchema = new mongoose.Schema(
     },
 
     // Relations
-    cours: {
+    seance: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Cours",
+      ref: "Seance",
       required: true,
-    }, // Cours concerné
+    }, // Séance concernée
 
     etudiant: {
       type: mongoose.Schema.Types.ObjectId,
