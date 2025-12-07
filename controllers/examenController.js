@@ -5,6 +5,7 @@ const User = require("../models/userSchema");
 const Notification = require("../models/notificationSchema");
 const path = require("path");
 const fs = require("fs");
+const archiver = require('archiver');
 
 /* ===========================================================
    🟢 CREATE EXAM
