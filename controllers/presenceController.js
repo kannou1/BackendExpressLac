@@ -2,7 +2,7 @@ const Presence = require("../models/presenceSchema");
 const User = require("../models/userSchema");
 const Cours = require("../models/coursSchema");
 const Seance = require("../models/seanceSchema");
-const Notification = require("../models/notificationSchema"); // <-- AJOUTÉ
+const Notification = require("../models/notificationSchema");
 
 /* ===========================================================
   CREATE PRESENCE
@@ -11,66 +11,85 @@ module.exports.createPresence = async (req, res) => {
   try {
     const { date, statut, seance, etudiant, enseignant } = req.body;
 
-    if (!date || !statut || !seance || !etudiant) {
+    if (!date || !statut || !seance || !etudiant || !enseignant) {
       return res.status(400).json({ message: "Tous les champs obligatoires doivent être remplis." });
     }
 
     // Vérifier que la séance et l'étudiant existent
-    const [seanceData, etudiantData] = await Promise.all([
+    const [seanceData, etudiantData, enseignantData] = await Promise.all([
       Seance.findById(seance).populate('cours', 'nom'),
       User.findById(etudiant),
+      User.findById(enseignant)
     ]);
 
     if (!seanceData) return res.status(404).json({ message: "Séance introuvable." });
     if (!etudiantData || etudiantData.role !== "etudiant")
       return res.status(400).json({ message: "Étudiant introuvable ou rôle invalide." });
+    if (!enseignantData || enseignantData.role !== "enseignant")
+      return res.status(400).json({ message: "Enseignant introuvable ou rôle invalide." });
 
-    // Vérifier l'enseignant si fourni
-    let enseignantData = null;
-    if (enseignant) {
-      enseignantData = await User.findById(enseignant);
-      if (!enseignantData || enseignantData.role !== "enseignant") {
-        return res.status(400).json({ message: "Enseignant introuvable ou rôle invalide." });
+    // Vérifier si une présence existe déjà pour cette combinaison
+    const existingPresence = await Presence.findOne({
+      seance,
+      etudiant,
+      date: {
+        $gte: new Date(date).setHours(0, 0, 0, 0),
+        $lt: new Date(date).setHours(23, 59, 59, 999)
       }
+    });
+
+    if (existingPresence) {
+      return res.status(400).json({ 
+        message: "Une présence existe déjà pour cet étudiant à cette séance et date." 
+      });
     }
 
-  // Créer la présence
+    // Créer la présence
     const newPresence = new Presence({
       date,
       statut,
       seance,
       etudiant,
-      enseignant: enseignant || null,
+      enseignant,
     });
 
     await newPresence.save();
 
-  // Ajouter les références
+    // Ajouter les références
     await Promise.all([
       User.findByIdAndUpdate(etudiant, { $addToSet: { presences: newPresence._id } }),
       Seance.findByIdAndUpdate(seance, { $addToSet: { presences: newPresence._id } }),
     ]);
 
-   /* ===========================================================
-     Vérifier le nombre d’absences de l’étudiant dans cette séance
+    /* ===========================================================
+     Vérifier le nombre d'absences de l'étudiant pour le COURS
    =========================================================== */
-    if (statut === "absent") {
-      const absences = await Presence.countDocuments({ etudiant, seance, statut: "absent" });
+    if (statut === "absent" && seanceData.cours) {
+      // Récupérer toutes les séances de ce cours
+      const coursSeances = await Seance.find({ cours: seanceData.cours._id });
+      const seanceIds = coursSeances.map(s => s._id);
+
+      // Compter les absences dans TOUTES les séances de ce cours
+      const absences = await Presence.countDocuments({ 
+        etudiant, 
+        seance: { $in: seanceIds },
+        statut: "absent" 
+      });
 
       if (absences === 2) {
-        const message = `⚠️ Vous avez 2 absences dans la séance "${seanceData.cours.nom} - ${seanceData.typeCours}". Une autre absence pourrait entraîner votre élimination.`;
+        const message = `⚠️ Vous avez 2 absences dans le cours "${seanceData.cours.nom}". Une autre absence pourrait entraîner votre élimination.`;
 
-  // Créer une notification
+        // Créer une notification
         const notif = await Notification.create({
           message,
           type: "avertissement",
           utilisateur: etudiant,
         });
 
-        // L’ajouter dans les notifications de l’utilisateur
+        // L'ajouter dans les notifications de l'utilisateur
         await User.findByIdAndUpdate(etudiant, { $push: { notifications: notif._id } });
 
-  // Envoi en temps réel si Socket.IO dispo
+        // Envoi en temps réel si Socket.IO dispo
         if (req.io) {
           req.io.to(etudiant.toString()).emit("receiveNotification", {
             message,
@@ -206,16 +225,17 @@ module.exports.getPresenceBySeance = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
+
 /* ===========================================================
-  CALCUL DU TAUX DE PRÉSENCE
+  CALCUL DU TAUX DE PRÉSENCE PAR ÉTUDIANT
 =========================================================== */
 module.exports.getTauxPresence = async (req, res) => {
   try {
-    const { etudiantId, coursId } = req.params;
+    const { etudiantId, seanceId } = req.params;
 
     // Construire le filtre de recherche
     const filter = { etudiant: etudiantId };
-    if (coursId) filter.cours = coursId;
+    if (seanceId) filter.seance = seanceId; // ✅ FIXED: was 'cours'
 
     // Récupérer toutes les présences correspondantes
     const presences = await Presence.find(filter);
@@ -224,7 +244,7 @@ module.exports.getTauxPresence = async (req, res) => {
       return res.status(404).json({ message: "Aucune donnée de présence trouvée pour cet étudiant." });
     }
 
-    // Compter le nombre de présences et d’absences
+    // Compter le nombre de présences et d'absences
     const total = presences.length;
     const presents = presences.filter(p => p.statut === "présent").length;
 
@@ -233,7 +253,7 @@ module.exports.getTauxPresence = async (req, res) => {
 
     res.status(200).json({
       etudiantId,
-      coursId: coursId || "tous les cours",
+      seanceId: seanceId || "toutes les séances",
       totalPresences: total,
       nombrePresent: presents,
       tauxPresence: `${taux}%`,
@@ -244,7 +264,9 @@ module.exports.getTauxPresence = async (req, res) => {
   }
 };
 
-// Taux de présence par cours
+/* ===========================================================
+  TAUX DE PRÉSENCE PAR COURS
+=========================================================== */
 module.exports.getTauxPresenceParCours = async (req, res) => {
   try {
     const { coursId } = req.params;
@@ -255,8 +277,12 @@ module.exports.getTauxPresenceParCours = async (req, res) => {
       return res.status(404).json({ message: "Cours introuvable." });
     }
 
-    // Récupérer toutes les présences du cours
-    const presences = await Presence.find({ cours: coursId });
+    // Récupérer toutes les séances de ce cours
+    const seances = await Seance.find({ cours: coursId });
+    const seanceIds = seances.map(s => s._id);
+
+    // Récupérer toutes les présences de ces séances
+    const presences = await Presence.find({ seance: { $in: seanceIds } });
 
     if (presences.length === 0) {
       return res.status(200).json({ message: "Aucune présence enregistrée pour ce cours.", taux: 0 });
@@ -278,7 +304,6 @@ module.exports.getTauxPresenceParCours = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
-
 
 /* ===========================================================
   TAUX DE PRÉSENCE PAR SÉANCE
@@ -306,7 +331,7 @@ module.exports.getTauxPresenceParSeance = async (req, res) => {
 
     res.status(200).json({
       message: "Taux de présence calculé avec succès ✅",
-      seance: `${seance.cours.nom} - ${seance.typeCours}`,
+      seance: `${seance.cours?.nom || 'Course'} - ${seance.typeCours}`,
       total: presences.length,
       presents,
       taux: `${taux}%`
@@ -342,7 +367,7 @@ module.exports.deletePresence = async (req, res) => {
 
     await Promise.all([
       User.updateMany({}, { $pull: { presences: deletedPresence._id } }),
-      Cours.updateMany({}, { $pull: { presences: deletedPresence._id } }),
+      Seance.updateMany({}, { $pull: { presences: deletedPresence._id } }),
     ]);
 
     res.status(200).json({ message: "Présence supprimée avec succès ✅" });
@@ -360,7 +385,7 @@ module.exports.deleteAllPresence = async (req, res) => {
     const result = await Presence.deleteMany({});
     await Promise.all([
       User.updateMany({}, { $set: { presences: [] } }),
-      Cours.updateMany({}, { $set: { presences: [] } }),
+      Seance.updateMany({}, { $set: { presences: [] } }),
     ]);
 
     res.status(200).json({

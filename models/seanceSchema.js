@@ -1,9 +1,10 @@
 const mongoose = require("mongoose");
 
 const seanceSchema = new mongoose.Schema({
-  // Schedule info
-  dateDebut: { type: Date, required: true },
-  dateFin: { type: Date, required: true },
+  // Nom/identifiant de la séance
+  nom: { type: String, required: true }, // Ex: "Séance 1", "Introduction", etc.
+  
+  // Schedule info (recurring weekly schedule)
   jourSemaine: {
     type: String,
     enum: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
@@ -16,18 +17,26 @@ const seanceSchema = new mongoose.Schema({
   salle: { type: String, required: true },
   typeCours: {
     type: String,
-    enum: ["Cours Magistral", "TD", "TP", "Exam", "Conference","CM"],
+    enum: ["Cours Magistral", "TD", "TP", "Exam", "Conference", "CM"],
     required: true
   },
 
   // Relations
   cours: { type: mongoose.Schema.Types.ObjectId, ref: "Cours", required: true },
   classe: { type: mongoose.Schema.Types.ObjectId, ref: "Classe", required: true },
-  emploiDuTemps: { type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps", required: true },
+  enseignant: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  emploiDuTemps: { type: mongoose.Schema.Types.ObjectId, ref: "EmploiDuTemps" },
+
+  // References to presence records
+  presences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Presence" }],
 
   // Optional
   notes: { type: String },
-  statut: { type: String, enum: ["planifie", "annule", "reporte"], default: "planifie" },
+  statut: { 
+    type: String, 
+    enum: ["actif", "annule", "termine"], 
+    default: "actif" 
+  },
 }, { timestamps: true });
 
 const Seance = mongoose.model("Seance", seanceSchema);
