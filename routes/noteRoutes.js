@@ -19,4 +19,11 @@ router.put("/updateById/:id", requireAuthUser, ControledAcces("admin", "enseigna
 // Supprimer une note
 router.delete("/delete/:id", requireAuthUser, ControledAcces("admin"), noteController.deleteNote);
 
+// get note by examen and etudiant
+router.get(
+  "/getByExamenEtudiant/:examenId/:etudiantId",
+  requireAuthUser,
+  ControledAcces("admin", "enseignant", "etudiant"),
+  noteController.getNoteByExamenAndEtudiant
+);
 module.exports = router;

@@ -210,3 +210,41 @@ module.exports.getNoteById = async (req, res) => {
     res.status(500).json({ message: "Erreur serveur", error: error.message });
   }
 };
+
+/* ===========================================================
+  GET NOTE BY EXAMEN + ETUDIANT
+=========================================================== */
+module.exports.getNoteByExamenAndEtudiant = async (req, res) => {
+  try {
+    const { examenId, etudiantId } = req.params;
+
+    if (!examenId || !etudiantId) {
+      return res.status(400).json({
+        message: "ID examen ou ID étudiant manquant."
+      });
+    }
+
+    const note = await Note.findOne({ examen: examenId, etudiant: etudiantId })
+      .populate("etudiant", "prenom nom email classe")
+      .populate("enseignant", "prenom nom email")
+      .populate({
+        path: "examen",
+        select: "nom type date noteMax",
+        populate: { path: "coursId", select: "nom code credits semestre" },
+      });
+
+    if (!note) {
+      return res.status(404).json({
+        message: "Aucune note trouvée pour cet examen et cet étudiant."
+      });
+    }
+
+    return res.status(200).json(note);
+  } catch (error) {
+    console.error("❌ Erreur getNoteByExamenAndEtudiant:", error);
+    return res.status(500).json({
+      message: "Erreur serveur",
+      error: error.message
+    });
+  }
+};
