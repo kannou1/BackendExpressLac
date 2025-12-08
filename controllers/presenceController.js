@@ -189,7 +189,7 @@ module.exports.getPresenceByEtudiant = async (req, res) => {
     const filteredPresences = presences.filter(presence => {
       const seanceClasseId = presence.seance?.classe?._id || presence.seance?.classe;
       const studentClasseId = student.classe?._id || student.classe;
-      return seanceClasseId === studentClasseId;
+      return seanceClasseId?.toString() === studentClasseId?.toString();
     });
 
     res.status(200).json(filteredPresences);

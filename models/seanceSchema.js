@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const seanceSchema = new mongoose.Schema({
   // Nom/identifiant de la séance
-  nom: { type: String, required: true }, // Ex: "Séance 1", "Introduction", etc.
+  nom: { type: String, default: "" }, // Ex: "Séance 1", "Introduction", etc.
   
   // Schedule info (recurring weekly schedule)
   jourSemaine: {
