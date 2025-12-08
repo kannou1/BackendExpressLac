@@ -162,17 +162,37 @@ module.exports.getPresenceById = async (req, res) => {
 module.exports.getPresenceByEtudiant = async (req, res) => {
   try {
     const { etudiantId } = req.params;
+
+    // Get the student to access their class
+    const student = await User.findById(etudiantId).select('classe');
+    if (!student) {
+      return res.status(404).json({ message: "Étudiant introuvable." });
+    }
+
     const presences = await Presence.find({ etudiant: etudiantId })
       .populate({
         path: "seance",
-        populate: {
-          path: "cours",
-          select: "nom code credits semestre"
-        }
+        populate: [
+          {
+            path: "cours",
+            select: "nom code credits semestre"
+          },
+          {
+            path: "classe",
+            select: "nom"
+          }
+        ]
       })
       .populate("enseignant", "prenom nom email");
 
-    res.status(200).json(presences);
+    // Filter presences to only include those for seances in the student's class
+    const filteredPresences = presences.filter(presence => {
+      const seanceClasseId = presence.seance?.classe?._id || presence.seance?.classe;
+      const studentClasseId = student.classe?._id || student.classe;
+      return seanceClasseId === studentClasseId;
+    });
+
+    res.status(200).json(filteredPresences);
   } catch (error) {
     console.error("❌ Erreur getPresenceByEtudiant:", error);
     res.status(500).json({ message: "Erreur serveur", error: error.message });
