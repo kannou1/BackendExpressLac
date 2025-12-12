@@ -26,4 +26,13 @@ router.get(
   ControledAcces("admin", "enseignant", "etudiant"),
   noteController.getNoteByExamenAndEtudiant
 );
+
+// get notes for current student
+router.get(
+  "/getForStudent",
+  requireAuthUser,
+  ControledAcces("etudiant"),
+  noteController.getNotesForStudent
+);
+
 module.exports = router;

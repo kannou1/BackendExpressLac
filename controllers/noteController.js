@@ -248,3 +248,26 @@ module.exports.getNoteByExamenAndEtudiant = async (req, res) => {
     });
   }
 };
+
+/* ===========================================================
+  GET NOTES FOR CURRENT STUDENT
+=========================================================== */
+module.exports.getNotesForStudent = async (req, res) => {
+  try {
+    const studentId = req.user.id;
+
+    const notes = await Note.find({ etudiant: studentId })
+      .populate("etudiant", "prenom nom email classe")
+      .populate("enseignant", "prenom nom email")
+      .populate({
+        path: "examen",
+        select: "nom type date noteMax coursId",
+        populate: { path: "coursId", select: "nom code credits semestre" },
+      });
+
+    res.status(200).json(notes);
+  } catch (error) {
+    console.error("❌ Erreur getNotesForStudent:", error);
+    res.status(500).json({ message: "Erreur serveur", error: error.message });
+  }
+};
