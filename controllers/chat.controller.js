@@ -1,49 +1,31 @@
-const Conversation = require("../models/Conversation");
-const { askAI } = require("../services/aiClient");
-const Exam = require("../models/examenSchema");
-const Certification = require("../models/certificationSchema");
+// backend/controllers/chat.controller.js
+const axios = require('axios');
+const Conversation = require('../models/conversation'); // your conversation schema
 
 exports.chat = async (req, res) => {
-  const user = req.user;
-  const { message } = req.body;
+  try {
+    const { userId, message } = req.body;
+    if (!userId || !message) return res.status(400).json({ error: 'Missing fields' });
 
-  let answer = null;
-  let systemPrompt = "";
+    // 1️⃣ Call the AI service
+    const aiResponse = await axios.post('http://localhost:7000/chat', {
+      message
+    });
 
-  // 1️⃣ User data questions
-  if (message.toLowerCase().includes("next exam")) {
-    const exam = await Exam.findOne({ user: user._id }).sort("date");
-    systemPrompt = `User exam data: ${JSON.stringify(exam)}`;
+    const answer = aiResponse.data.answer || aiResponse.data; // depending on your ai-service response
+
+    // 2️⃣ Save conversation in DB
+    await Conversation.create({
+      userId,
+      message,
+      response: answer,
+      createdAt: new Date()
+    });
+
+    // 3️⃣ Return AI response to frontend
+    res.json({ answer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
-
-  // 2️⃣ Certification questions
-  if (message.toLowerCase().includes("ejpt")) {
-    const cert = await Certification.findOne({ name: /ejpt/i });
-    systemPrompt = `
-OFFICIAL DATA:
-${JSON.stringify(cert, null, 2)}
-Add study plan and tips.
-`;
-  }
-
-  // 3️⃣ Call AI
-  answer = await askAI(systemPrompt, message);
-
-  // 4️⃣ Fallback if AI down
-  if (!answer) {
-    answer = "AI service unavailable. Showing raw data instead.";
-  }
-
-  // 5️⃣ Save conversation
-  let convo = await Conversation.findOne({ user: user._id });
-  if (!convo) convo = new Conversation({ user: user._id, messages: [] });
-
-  convo.messages.push(
-    { role: "user", content: message },
-    { role: "assistant", content: answer }
-  );
-
-  await convo.save();
-
-  res.json({ answer });
 };
