@@ -26,6 +26,7 @@ const seanceRoutes =   require('./routes/seanceRoutes');
 const authLogMiddleware = require("./middlewares/authLogMiddleware");
 const announcementRoutes = require('./routes/announcementRoutes');// === APP EXPRESS ===
 const courseMaterialRoutes = require("./routes/courseMaterialsRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 var app = express();
 
@@ -86,6 +87,8 @@ app.use('/notification', notificationRoutes);
 app.use('/announcement', announcementRoutes);
 app.use("/course-material", courseMaterialRoutes);
 app.use('/seance', seanceRoutes);
+app.use("/api/chat", require("./routes/chatroutes"));
+
 // === ERREURS ===
 app.use((req, res, next) => next(createError(404)));
 app.use((err, req, res, next) => {
