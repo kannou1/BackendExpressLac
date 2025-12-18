@@ -87,7 +87,7 @@ app.use('/notification', notificationRoutes);
 app.use('/announcement', announcementRoutes);
 app.use("/course-material", courseMaterialRoutes);
 app.use('/seance', seanceRoutes);
-app.use("/api/chat", require("./routes/chatroutes"));
+app.use("/chat", require("./routes/chatRoutes"));
 
 // === ERREURS ===
 app.use((req, res, next) => next(createError(404)));
